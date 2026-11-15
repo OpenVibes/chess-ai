@@ -1,8 +1,8 @@
 #!/bin/sh
-# Builds dist/Chess.app (ad-hoc signed). The icon step needs Pillow; without it the app builds with no icon.
+# Builds dist/Chess.app (ad-hoc signed) and dist/Chess-<version>.dmg. The icon step needs Pillow; without it the app builds with no icon.
 set -e
 cd "$(dirname "$0")"
-VERSION=1.0.0
+VERSION=1.1.0
 APP="dist/Chess.app"
 
 swift build -c release
@@ -39,8 +39,15 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.board-games</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict>
 </plist>
 PLIST
 codesign --force --sign - "$APP"
+STAGE=$(mktemp -d)
+cp -R "$APP" "$STAGE/"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "Chess" -srcfolder "$STAGE" -ov -format UDZO "dist/Chess-$VERSION.dmg" >/dev/null
+rm -rf "$STAGE"
 echo "Built: $PWD/$APP"
+echo "DMG: $PWD/dist/Chess-$VERSION.dmg"

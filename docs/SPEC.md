@@ -199,7 +199,7 @@ public struct AnalysisLimits: Sendable {
     public init(maxDepth: Int = 6, budgetSeconds: Double = 0.8)
 }
 extension Engine {
-    /// Deterministic full-strength search (no easy-level randomness). Checkmate on the board is .mate(0) for the winner's sign; stalemate/draw is .centipawns(0).
+    /// Deterministic full-strength search (no easy-level randomness). With checkmate already on the board: bestMove nil and ±100000 centipawns (negative when White is mated); stalemate/draw is .centipawns(0).
     public static func analyse(_ game: Game, limits: AnalysisLimits = .init(),
                                shouldStop: @Sendable () -> Bool = { false }) -> PositionAnalysis
 }

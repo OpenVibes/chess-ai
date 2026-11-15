@@ -68,7 +68,7 @@ Wire the coach into `ChessApp` per "ChessApp: coach behaviour" and "Design addit
 
 Add the third mode per the spec: `GameMode.versusModel`, the request / parse / retry / engine-fallback loop, error state with "Try again" and "Let the engine move", cancellation on new game and undo, status line and opponent strip with the model name, and the new game sheet changes. Tests with a stub transport: a legal reply is played; an illegal reply then a legal one plays the second; three bad replies fall back to the engine with the notice; an HTTP 401 stops with the error and "Try again" works; undo and new game cancel a pending request; the human playing Black gets the model's first move.
 
-## 13. DMG and version bump — light — no dependencies — [ ]
+## 13. DMG and version bump — light — no dependencies — [x]
 
 `build.sh`: version 1.1.0, the `NSAppTransportSecurity` key, and `dist/Chess-1.1.0.dmg` via `hdiutil` as in the spec "Packaging" (see `../remote-pc/build.sh` for the pattern; read only). Verify: `./build.sh`, the DMG mounts, contains `Chess.app` and the Applications link, and the app inside launches. Touches only `build.sh` and `.gitignore`.
 
