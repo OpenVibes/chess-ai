@@ -48,11 +48,11 @@ Add `build.sh` modelled on `../remote-pc/build.sh`: `swift build -c release`, as
 
 Spec: `docs/SPEC.md` "Coach and AI models". Same conventions: workers do not commit.
 
-## 8. Engine analysis API — careful — no dependencies — [ ]
+## 8. Engine analysis API — careful — no dependencies — [x]
 
 Add `Score`, `PositionAnalysis`, `AnalysisLimits` and `Engine.analyse` to `ChessEngine` per the spec ("ChessEngine additions"), reusing the existing `Searcher`. Scores are from White's point of view; mate distance in moves. Touches only `Sources/ChessEngine` and `Tests/ChessEngineTests`. Tests: start position is within ±100 cp; mate in 1 and mate in 2 report `.mate(1)` / `.mate(2)` with the right sign for both colours; a position with a hanging queen scores above +500 for the side that can take it and `bestMove` takes it; checkmated and stalemated positions; `principalVariation.first == bestMove` and every PV move is legal in sequence; default limits return within 1.5 s in a debug build; `shouldStop` ends it promptly; results are deterministic.
 
-## 9. AI model client — medium — no dependencies — [ ]
+## 9. AI model client — medium — no dependencies — [x]
 
 Create the `ChessCoach` library target and `ChessCoachTests` in `Package.swift` (`ChessApp` depends on it). Implement "ChessCoach: AI model access" and "ChessCoach: prompts and reply parsing": `ModelConfig`, presets, `LLMClient` for both formats, `LLMError`, `LLMTransport`, `CoachPrompts`, `MoveParser`. `CoachPrompts.explainMove` takes a `MoveReview`, which task 10 owns: declare `MoveQuality` and `MoveReview` exactly as in the spec in `Sources/ChessCoach/Review.swift` (stored properties and a memberwise public init; leave `summary` returning ""), and do not write `Coach`. Tests with a stub transport, no network: exact URL, headers and JSON body for each format (including the fallback header rule and that no sampling fields are sent); reply extraction (text blocks only, skipping thinking); refusal; every status mapping; missing key; `MoveParser` on SAN, UCI, castling spelt with zeros, promotion, decorated moves, the `MOVE:` line, prose around the move, ambiguous and illegal replies.
 

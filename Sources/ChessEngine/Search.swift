@@ -7,6 +7,11 @@ struct SearchInfo {
     var nodes = 0
     /// Score of the last completed iteration, side to move's point of view.
     var score = 0
+    /// Score (side to move's point of view) of the returned best move; nil when no iteration
+    /// searched any move. Equals `score` unless a partially searched deeper iteration upgraded the move.
+    var bestScore: Int?
+    /// Principal variation of the returned best move; empty when unknown. Starts with the move.
+    var pv: [Move] = []
 }
 
 struct SearchLimits {
@@ -331,18 +336,24 @@ final class Searcher {
             }
 
             if stopped {
-                if let b = iterationBest { best = b }
+                if let b = iterationBest {
+                    best = b
+                    info.bestScore = iterationScore
+                    info.pv = (0..<pvLength[0]).compactMap { pvTable[$0] }
+                }
                 break
             }
             guard let b = iterationBest else { break }
             best = b
             info.depth = depth
             info.score = iterationScore
+            info.bestScore = iterationScore
             if let idx = ordered.firstIndex(of: b), idx != 0 {
                 ordered.remove(at: idx)
                 ordered.insert(b, at: 0)
             }
             previousPV = (0..<pvLength[0]).compactMap { pvTable[$0] }
+            info.pv = previousPV
             if abs(iterationScore) >= Searcher.mateBound { break }
         }
         info.nodes = nodes
