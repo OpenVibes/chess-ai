@@ -1,0 +1,116 @@
+import SwiftUI
+import ChessCore
+
+struct SidebarView: View {
+    let model: GameModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            PlayerStrip(model: model, color: model.topColor)
+            Text(model.statusText)
+                .font(.system(size: 15, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            MoveList(model: model)
+            PlayerStrip(model: model, color: model.bottomColor)
+            HStack(spacing: 8) {
+                Button("New game") { model.showingNewGame = true }
+                Button("Undo") { model.undo() }
+                    .disabled(!model.canUndo)
+                Button("Flip board") { model.flipBoard() }
+            }
+            .controlSize(.small)
+            .frame(maxWidth: .infinity)
+        }
+        .padding(16)
+        .frame(width: 280)
+        .frame(maxHeight: .infinity)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+}
+
+private struct PlayerStrip: View {
+    let model: GameModel
+    let color: PieceColor
+
+    var body: some View {
+        let lead = model.lead(color)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(model.playerName(color))
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                if lead > 0 {
+                    Text("+\(lead)")
+                        .font(.system(size: 13, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            HStack(spacing: -4) {
+                ForEach(Array(model.capturedPieces(by: color).enumerated()), id: \.offset) { _, p in
+                    PieceGlyph(piece: p, size: 16)
+                        .frame(width: 14, height: 18)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(height: 18)
+        }
+    }
+}
+
+private struct MoveList: View {
+    let model: GameModel
+
+    var body: some View {
+        let history = model.game.history
+        let rowCount = (history.count + 1) / 2
+        ScrollViewReader { proxy in
+            ScrollView {
+                if history.isEmpty {
+                    Text("Moves appear here.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(0..<rowCount, id: \.self) { row in
+                            HStack(spacing: 0) {
+                                Text("\(row + 1).")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 36, alignment: .trailing)
+                                    .padding(.trailing, 8)
+                                cell(index: row * 2, history: history)
+                                cell(index: row * 2 + 1, history: history)
+                            }
+                            .font(.system(size: 13).monospacedDigit())
+                            .padding(.vertical, 2)
+                            .id(row)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .onChange(of: history.count) {
+                if rowCount > 0 {
+                    withAnimation(.easeOut(duration: 0.15)) { proxy.scrollTo(rowCount - 1, anchor: .bottom) }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+    }
+
+    @ViewBuilder
+    private func cell(index: Int, history: [MoveRecord]) -> some View {
+        if index < history.count {
+            let latest = index == history.count - 1
+            Text(history[index].san)
+                .padding(.horizontal, 6).padding(.vertical, 1)
+                .background(RoundedRectangle(cornerRadius: 4)
+                    .fill(latest ? Color.accentColor.opacity(0.28) : .clear))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+        }
+    }
+}

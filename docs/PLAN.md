@@ -28,7 +28,7 @@ Implement `Game`, `MoveRecord`, `GameStatus` and SAN generation in `ChessCore` (
 
 Implement `Engine` in `ChessEngine` per SPEC (search, evaluation, three levels). Needs only `Position` from task 2 plus `Game.history` for repetition; if task 3 is not merged yet, read repetition keys defensively. Tests: finds mate in 1 and mate in 2 on Medium and Hard for at least three positions each; never returns an illegal move over 200 random-playout positions; takes a hanging queen; Hard returns within 2.5 s; `shouldStop` returning true ends the search promptly. Only touches `Sources/ChessEngine` and `Tests/ChessEngineTests`.
 
-## 5. Board and sidebar UI — medium — after 3 — [ ]
+## 5. Board and sidebar UI — medium — after 3 — [x]
 
 Build the Two players experience in `ChessApp` exactly as SPEC "Design" describes: `GameModel`, `BoardView` with click and drag moves, highlights, promotion picker, sidebar with strips, status, move list and buttons, new game sheet (mode control present; Versus computer options shown but the computer does not move yet), game over card, menu commands, and the `CHESS_SNAPSHOT` / `CHESS_FEN` hook. Verify: `swift build`, then snapshots of the start position and of a mid-game FEN.
 
