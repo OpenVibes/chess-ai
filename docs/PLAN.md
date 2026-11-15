@@ -20,7 +20,7 @@ Implement `Position` in `ChessCore`: board storage, FEN parse/print, legal move 
 
 Plus FEN round-trip tests and targeted tests for castling-rights loss on rook capture and the en passant pin. Start position perft 4 should run in well under 2 s in a debug build.
 
-## 3. Game layer and notation — medium — after 2 — [ ]
+## 3. Game layer and notation — medium — after 2 — [x]
 
 Implement `Game`, `MoveRecord`, `GameStatus` and SAN generation in `ChessCore` (separate files from task 2's). Status priority and draw rules per SPEC. Tests: fool's mate and scholar's mate end in checkmate with correct SAN (`Qh4#`, `Qxf7#`); a stalemate FEN; threefold by knight shuffling; fifty-move; each insufficient-material case; SAN disambiguation (file, rank, both), castling, en passant, promotion with check; undo restores position, history and status.
 
