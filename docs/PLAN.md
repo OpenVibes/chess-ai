@@ -2,7 +2,7 @@
 
 Workers run on Sonnet; the tier sets the effort. Status: `[ ]` open, `[x]` accepted. Spec: `docs/SPEC.md`.
 
-## 1. Scaffold package — light — no dependencies — [ ]
+## 1. Scaffold package — light — no dependencies — [x]
 
 Create `Package.swift` (tools 5.9, macOS 14) with targets `ChessCore`, `ChessEngine`, `ChessApp` and test targets `ChessCoreTests`, `ChessEngineTests`. Declare the whole public API from SPEC "ChessCore public API" and "ChessEngine public API" as compiling stubs (bodies may `fatalError("unimplemented")`, except `Position.start` and `Square`, which should be real). `ChessApp` opens an empty 920×640 window titled "Chess". One trivial passing test per test target, using whichever of XCTest / Swift Testing works with `swift test` here; record the choice in CLAUDE.md. Verify: `swift build`, `swift test`.
 

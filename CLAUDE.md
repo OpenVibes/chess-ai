@@ -17,6 +17,7 @@ CHESS_SNAPSHOT=/abs/shot.png .build/debug/ChessApp   # render the window to a PN
 - Dependencies go one way: `ChessApp → ChessEngine → ChessCore`. `ChessCore` has no UI, no randomness, value types only.
 - The public API in `docs/SPEC.md` is a contract. Add to it freely; do not change or remove a declared signature without asking.
 - `ChessApp` contains no rules logic. Legality, status and notation always come from `ChessCore`.
+- Tests use XCTest.
 - Square index: 0 = a1, 7 = h1, 63 = h8.
 - Design values (colours, sizes, copy) come from `docs/SPEC.md` "Design". Do not invent UI.
 - Do not commit; the orchestrator commits after review. Update `filemap.md` when you add or move files.
