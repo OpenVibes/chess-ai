@@ -36,7 +36,7 @@ Build the Two players experience in `ChessApp` exactly as SPEC "Design" describe
 
 Connect `Engine` to `GameModel`: after a human move in Versus computer, run `Engine.bestMove` off the main thread, show "Computer is thinking…", block input meanwhile, apply the reply with the normal animation. Cancel the search on New game and on Undo. Computer moves first when the human plays Black. Undo goes back to the human's previous turn. Opponent strip shows "Computer · <level>". Verify: `swift build`, `swift test`, and a headless self-check (env hook or test) that plays a human move and receives a legal reply.
 
-## 7. App bundle and icon — light — after 1 — [ ]
+## 7. App bundle and icon — light — after 1 — [x]
 
 Add `build.sh` modelled on `../remote-pc/build.sh`: `swift build -c release`, assemble `dist/Chess.app` (bundle id `local.chess.app`, category board games, min macOS 14), ad-hoc codesign. No DMG. Icon: `make-icon.py` (Pillow) draws a knight glyph on a rounded square in the board's dark colour and builds `AppIcon.icns`; if Pillow is missing, the script says so and the build continues without an icon. Verify: `./build.sh` and `open dist/Chess.app` starts the app. Touches only `build.sh`, `make-icon.py`, `.gitignore`.
 
