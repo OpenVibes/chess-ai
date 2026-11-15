@@ -5,11 +5,17 @@
 - `docs/PLAN.md` — task list and status
 - `Package.swift` — targets and test targets (task 1)
 - `Sources/ChessCore/Types.swift` — colours, pieces, squares, moves, castling rights
-- `Sources/ChessCore/Position.swift` — Position, RepetitionKey, perft
+- `Sources/ChessCore/Position.swift` — Position (bitboard storage, accessors, attacks, `applying`, insufficient material), RepetitionKey, perft
+- `Sources/ChessCore/Bitboard.swift` — bit helpers, precomputed attack/ray/between/line tables, slider attacks
+- `Sources/ChessCore/MoveGeneration.swift` — legal move generation (pin and check masks, castling, en passant)
+- `Sources/ChessCore/FEN.swift` — FEN parsing and printing
 - `Sources/ChessCore/Game.swift` — GameStatus, MoveRecord, Game
 - `Sources/ChessCore/Notation.swift` — SAN generation (placeholder until task 3)
 - `Sources/ChessEngine/Engine.swift` — Difficulty and Engine (search, evaluation)
 - `Sources/ChessApp/ChessApp.swift` — @main app, window, activation delegate
-- `Tests/ChessCoreTests/ChessCoreTests.swift` — perft, rules, game and SAN tests
+- `Tests/ChessCoreTests/ChessCoreTests.swift` — scaffold smoke test (game and SAN tests land here in task 3)
+- `Tests/ChessCoreTests/PerftTests.swift` — perft reference counts, timing
+- `Tests/ChessCoreTests/FENTests.swift` — FEN round-trip and malformed input
+- `Tests/ChessCoreTests/PositionTests.swift` — castling, en passant, promotion, clocks, draws, repetition key
 - `Tests/ChessEngineTests/ChessEngineTests.swift` — engine tests
 - `build.sh`, `make-icon.py` — app bundle and icon (task 7)

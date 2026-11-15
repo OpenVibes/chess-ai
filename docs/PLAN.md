@@ -6,7 +6,7 @@ Workers run on Sonnet; the tier sets the effort. Status: `[ ]` open, `[x]` accep
 
 Create `Package.swift` (tools 5.9, macOS 14) with targets `ChessCore`, `ChessEngine`, `ChessApp` and test targets `ChessCoreTests`, `ChessEngineTests`. Declare the whole public API from SPEC "ChessCore public API" and "ChessEngine public API" as compiling stubs (bodies may `fatalError("unimplemented")`, except `Position.start` and `Square`, which should be real). `ChessApp` opens an empty 920×640 window titled "Chess". One trivial passing test per test target, using whichever of XCTest / Swift Testing works with `swift test` here; record the choice in CLAUDE.md. Verify: `swift build`, `swift test`.
 
-## 2. Rules core — careful — after 1 — [ ]
+## 2. Rules core — careful — after 1 — [x]
 
 Implement `Position` in `ChessCore`: board storage, FEN parse/print, legal move generation, `applying`, check and attack detection, insufficient material, `repetitionKey`, and `perft`. Follow SPEC "Rules details". Do not touch `Game`/SAN. Verify with perft tests (must all match):
 
