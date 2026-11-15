@@ -14,12 +14,17 @@ struct SidebarView: View {
             MoveList(model: model)
             PlayerStrip(model: model, color: model.bottomColor)
             HStack(spacing: 8) {
-                Button("New game") { model.showingNewGame = true }
-                Button("Undo") { model.undo() }
-                    .disabled(!model.canUndo)
-                Button("Flip board") { model.flipBoard() }
+                Button { model.showingNewGame = true } label: {
+                    Text("New game").lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
+                }
+                Button { model.undo() } label: {
+                    Text("Undo").lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
+                }
+                .disabled(!model.canUndo)
+                Button { model.flipBoard() } label: {
+                    Text("Flip board").lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
+                }
             }
-            .controlSize(.small)
             .frame(maxWidth: .infinity)
         }
         .padding(16)
@@ -32,6 +37,17 @@ struct SidebarView: View {
 private struct PlayerStrip: View {
     let model: GameModel
     let color: PieceColor
+
+    private static func solidGlyph(_ kind: PieceKind) -> String {
+        switch kind {
+        case .king: return "\u{265A}"
+        case .queen: return "\u{265B}"
+        case .rook: return "\u{265C}"
+        case .bishop: return "\u{265D}"
+        case .knight: return "\u{265E}"
+        case .pawn: return "\u{265F}"
+        }
+    }
 
     var body: some View {
         let lead = model.lead(color)
@@ -49,7 +65,10 @@ private struct PlayerStrip: View {
             }
             HStack(spacing: -4) {
                 ForEach(Array(model.capturedPieces(by: color).enumerated()), id: \.offset) { _, p in
-                    PieceGlyph(piece: p, size: 16)
+                    Text(Self.solidGlyph(p.kind) + "\u{FE0E}")
+                        .font(.custom("Apple Symbols", size: 16))
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
                         .frame(width: 14, height: 18)
                 }
                 Spacer(minLength: 0)

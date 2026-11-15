@@ -15,7 +15,7 @@
 - `Sources/ChessEngine/Search.swift` — Searcher: iterative deepening, PVS alpha-beta, quiescence, ordering, repetition handling, easy-level random pick
 - `Sources/ChessEngine/Evaluation.swift` — material, piece-square tables, tapered king table, bishop pair
 - `Sources/ChessApp/ChessApp.swift` — @main app, window, menu commands, MainView layout, CHESS_* snapshot hook (NSHostingView + cacheDisplay)
-- `Sources/ChessApp/GameModel.swift` — @Observable GameModel: game, mode, selection, promotion, undo, identity-tracked pieces for animation, `positionDidChange()` hook for task 6
+- `Sources/ChessApp/GameModel.swift` — @Observable GameModel: game, mode, selection, promotion, undo, identity-tracked pieces for animation, computer opponent (`positionDidChange()` starts/cancels an off-main-thread `Engine.bestMove` search, generation counter, 0.4 s minimum think time)
 - `Sources/ChessApp/BoardView.swift` — board squares, coordinates, highlights, pieces, click and drag gesture, promotion popover anchor
 - `Sources/ChessApp/PieceGlyph.swift` — Palette colours and the Unicode glyph piece view
 - `Sources/ChessApp/SidebarView.swift` — player strips, status line, move list, button row
@@ -29,4 +29,5 @@
 - `Tests/ChessCoreTests/FENTests.swift` — FEN round-trip and malformed input
 - `Tests/ChessCoreTests/PositionTests.swift` — castling, en passant, promotion, clocks, draws, repetition key
 - `Tests/ChessEngineTests/ChessEngineTests.swift` — engine tests (mates in 1 and 2, tactics, legality playouts, evaluation, timing, cancellation, repetition)
+- `Tests/ChessAppTests/GameModelTests.swift` — GameModel tests: selection, promotion, piece identity, undo, game over, versus-computer flow (`@testable import ChessApp`)
 - `build.sh`, `make-icon.py` — app bundle and icon (task 7)

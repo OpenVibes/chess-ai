@@ -32,7 +32,7 @@ Implement `Engine` in `ChessEngine` per SPEC (search, evaluation, three levels).
 
 Build the Two players experience in `ChessApp` exactly as SPEC "Design" describes: `GameModel`, `BoardView` with click and drag moves, highlights, promotion picker, sidebar with strips, status, move list and buttons, new game sheet (mode control present; Versus computer options shown but the computer does not move yet), game over card, menu commands, and the `CHESS_SNAPSHOT` / `CHESS_FEN` hook. Verify: `swift build`, then snapshots of the start position and of a mid-game FEN.
 
-## 6. Versus computer wiring — medium — after 4 and 5 — [ ]
+## 6. Versus computer wiring — medium — after 4 and 5 — [x]
 
 Connect `Engine` to `GameModel`: after a human move in Versus computer, run `Engine.bestMove` off the main thread, show "Computer is thinking…", block input meanwhile, apply the reply with the normal animation. Cancel the search on New game and on Undo. Computer moves first when the human plays Black. Undo goes back to the human's previous turn. Opponent strip shows "Computer · <level>". Verify: `swift build`, `swift test`, and a headless self-check (env hook or test) that plays a human move and receives a legal reply.
 

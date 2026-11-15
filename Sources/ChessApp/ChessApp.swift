@@ -75,6 +75,8 @@ extension GameModel {
         var position = Position.start
         if let fen = env["CHESS_FEN"], let p = Position(fen: fen) { position = p }
         let model = GameModel(position: position)
+        let headless = !(env["CHESS_SNAPSHOT"] ?? "").isEmpty
+        model.computerEnabled = !headless || env["CHESS_AUTOPLAY"] == "1"
         if let vs = env["CHESS_VS"], let d = Difficulty(rawValue: vs.lowercased()) {
             model.newGame(mode: .versusComputer, humanColor: .white, difficulty: d, position: position)
         }
@@ -107,6 +109,12 @@ enum SnapshotHook {
         let dark = env["CHESS_DARK"] == "1"
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 400_000_000)
+            if env["CHESS_AUTOPLAY"] == "1" {
+                let deadline = Date().addingTimeInterval(10)
+                while model.isThinking && Date() < deadline {
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+            }
             let host = NSHostingView(rootView: MainView(model: model).frame(width: 920, height: 640))
             let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 920, height: 640),
                                styleMask: [.borderless], backing: .buffered, defer: false)

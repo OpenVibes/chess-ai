@@ -30,6 +30,14 @@ extension PieceKind {
     }
 }
 
+/// Thread-safe cancellation flag read by the engine's `shouldStop` closure.
+final class CancelFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
+    func cancel() { lock.lock(); cancelled = true; lock.unlock() }
+}
+
 @MainActor @Observable
 final class GameModel {
     private(set) var game: Game
@@ -42,6 +50,13 @@ final class GameModel {
     var isThinking = false
     var gameOverDismissed = false
     var showingNewGame = false
+    /// False in headless snapshot runs so the computer does not move on its own.
+    var computerEnabled = true
+    /// Minimum time before the computer's move is applied.
+    var minimumThinkTime: Double = 0.4
+
+    @ObservationIgnored private var searchGeneration = 0
+    @ObservationIgnored private var searchFlag: CancelFlag?
 
     /// Pieces with stable ids; one snapshot per position so undo restores identities.
     private var pieceStack: [[PieceItem]]
@@ -96,7 +111,7 @@ final class GameModel {
         return game.position.kingSquare(of: sideToMove)
     }
 
-    var canUndo: Bool { !game.history.isEmpty && !isThinking }
+    var canUndo: Bool { !game.history.isEmpty }
 
     var bottomColor: PieceColor { whiteAtBottom ? .white : .black }
     var topColor: PieceColor { bottomColor.opposite }
@@ -205,7 +220,6 @@ final class GameModel {
         pieceStack = [makeItems(for: position)]
         selected = nil
         pendingPromotion = nil
-        isThinking = false
         gameOverDismissed = false
         whiteAtBottom = (mode == .versusComputer) ? (humanColor == .white) : true
         positionDidChange()
@@ -242,7 +256,43 @@ final class GameModel {
         return true
     }
 
+    /// Called after every move, undo and new game: cancels any running search, then starts one if it is the computer's turn.
     func positionDidChange() {
-        // task 6: trigger the computer here
+        cancelSearch()
+        guard computerEnabled, mode == .versusComputer, !isGameOver, sideToMove != humanColor else { return }
+        startSearch()
+    }
+
+    private func cancelSearch() {
+        searchGeneration += 1
+        searchFlag?.cancel()
+        searchFlag = nil
+        isThinking = false
+    }
+
+    private func startSearch() {
+        let generation = searchGeneration
+        let flag = CancelFlag()
+        searchFlag = flag
+        isThinking = true
+        let snapshot = game
+        let level = difficulty
+        let minimum = minimumThinkTime
+        Task { @MainActor [weak self] in
+            let started = ContinuousClock.now
+            let move = await Task.detached(priority: .userInitiated) {
+                Engine.bestMove(in: snapshot, difficulty: level, shouldStop: { flag.isCancelled })
+            }.value
+            guard let self, generation == self.searchGeneration, !flag.isCancelled else { return }
+            let elapsed = started.duration(to: .now)
+            let wait = Duration.seconds(minimum) - elapsed
+            if wait > .zero {
+                try? await Task.sleep(for: wait)
+                guard generation == self.searchGeneration, !flag.isCancelled else { return }
+            }
+            self.searchFlag = nil
+            self.isThinking = false
+            if let move { self.perform(move) }
+        }
     }
 }
