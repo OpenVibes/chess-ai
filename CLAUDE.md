@@ -14,7 +14,7 @@ CHESS_SNAPSHOT=/abs/shot.png .build/debug/ChessApp   # render the window to a PN
 
 ## Conventions
 
-- Dependencies go one way: `ChessApp → ChessEngine → ChessCore`. `ChessCore` has no UI, no randomness, value types only.
+- Dependencies go one way: `ChessApp → ChessCoach → ChessEngine → ChessCore`. `ChessCore` has no UI, no randomness, value types only.
 - The public API in `docs/SPEC.md` is a contract. Add to it freely; do not change or remove a declared signature without asking.
 - `ChessApp` contains no rules logic. Legality, status and notation always come from `ChessCore`.
 - Tests use XCTest.

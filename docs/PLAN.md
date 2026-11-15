@@ -43,3 +43,35 @@ Add `build.sh` modelled on `../remote-pc/build.sh`: `swift build -c release`, as
 ## Order
 
 1 → 2 → (3 ‖ 4 ‖ 7) → 5 → 6. Task 7 can start any time after 1. Commit after each accepted task.
+
+# Version 1.1: coach and AI models
+
+Spec: `docs/SPEC.md` "Coach and AI models". Same conventions: workers do not commit.
+
+## 8. Engine analysis API — careful — no dependencies — [ ]
+
+Add `Score`, `PositionAnalysis`, `AnalysisLimits` and `Engine.analyse` to `ChessEngine` per the spec ("ChessEngine additions"), reusing the existing `Searcher`. Scores are from White's point of view; mate distance in moves. Touches only `Sources/ChessEngine` and `Tests/ChessEngineTests`. Tests: start position is within ±100 cp; mate in 1 and mate in 2 report `.mate(1)` / `.mate(2)` with the right sign for both colours; a position with a hanging queen scores above +500 for the side that can take it and `bestMove` takes it; checkmated and stalemated positions; `principalVariation.first == bestMove` and every PV move is legal in sequence; default limits return within 1.5 s in a debug build; `shouldStop` ends it promptly; results are deterministic.
+
+## 9. AI model client — medium — no dependencies — [ ]
+
+Create the `ChessCoach` library target and `ChessCoachTests` in `Package.swift` (`ChessApp` depends on it). Implement "ChessCoach: AI model access" and "ChessCoach: prompts and reply parsing": `ModelConfig`, presets, `LLMClient` for both formats, `LLMError`, `LLMTransport`, `CoachPrompts`, `MoveParser`. `CoachPrompts.explainMove` takes a `MoveReview`, which task 10 owns: declare `MoveQuality` and `MoveReview` exactly as in the spec in `Sources/ChessCoach/Review.swift` (stored properties and a memberwise public init; leave `summary` returning ""), and do not write `Coach`. Tests with a stub transport, no network: exact URL, headers and JSON body for each format (including the fallback header rule and that no sampling fields are sent); reply extraction (text blocks only, skipping thinking); refusal; every status mapping; missing key; `MoveParser` on SAN, UCI, castling spelt with zeros, promotion, decorated moves, the `MOVE:` line, prose around the move, ambiguous and illegal replies.
+
+## 10. Move review — medium — after 8 and 9 — [ ]
+
+Implement `Coach` and `MoveReview.summary` in `Sources/ChessCoach/Review.swift` per "ChessCoach: move review". Tests: win chance values (0 cp = 0.5, symmetric, mate = 1/0); each threshold boundary; playing the engine move is always `best`; single legal move is `best`; a queen hang reviewed end to end with real `Engine.analyse` calls is a blunder naming the better move; missed mate and allowed mate copy; `format` strings; Black's point of view.
+
+## 11. Coach in the app — careful — after 10 — [ ]
+
+Wire the coach into `ChessApp` per "ChessApp: coach behaviour" and "Design additions", except the Versus AI model mode: background analysis with cache and cancellation, reviews per ply (and their removal on undo), evaluation bar, arrow, move list marks and click-to-inspect, coach card, hint (button and ⇧⌘H), AI explanations through `LLMClient`, settings storage, Keychain key store behind a protocol, the Settings window with "Test connection", and the three headless hooks. Tests in `ChessAppTests` with a stub transport and an in-memory key store: a blunder gets reviewed and marked; undo drops reviews; hint sets the arrow and the next move clears it; AI text replaces the placeholder; an AI failure leaves the rule-based text; nothing is requested when AI is off. Verify with snapshots: a reviewed blunder, the hint arrow, the settings form, dark mode.
+
+## 12. Versus AI model mode — medium — after 11 — [ ]
+
+Add the third mode per the spec: `GameMode.versusModel`, the request / parse / retry / engine-fallback loop, error state with "Try again" and "Let the engine move", cancellation on new game and undo, status line and opponent strip with the model name, and the new game sheet changes. Tests with a stub transport: a legal reply is played; an illegal reply then a legal one plays the second; three bad replies fall back to the engine with the notice; an HTTP 401 stops with the error and "Try again" works; undo and new game cancel a pending request; the human playing Black gets the model's first move.
+
+## 13. DMG and version bump — light — no dependencies — [ ]
+
+`build.sh`: version 1.1.0, the `NSAppTransportSecurity` key, and `dist/Chess-1.1.0.dmg` via `hdiutil` as in the spec "Packaging" (see `../remote-pc/build.sh` for the pattern; read only). Verify: `./build.sh`, the DMG mounts, contains `Chess.app` and the Applications link, and the app inside launches. Touches only `build.sh` and `.gitignore`.
+
+## Order
+
+(8 ‖ 9 ‖ 13) → 10 → 11 → 12.
