@@ -8,7 +8,11 @@ Native macOS chess app. Swift package (tools 5.9, Swift 5 mode, macOS 14+), Swif
 swift build                      # debug build
 swift test                       # all tests
 swift run ChessApp               # run the app
-CHESS_SNAPSHOT=/abs/shot.png .build/debug/ChessApp   # render the window to a PNG and exit (optional CHESS_FEN)
+CHESS_SNAPSHOT=/abs/shot.png .build/debug/ChessApp   # render the window to a PNG and exit
+# optional env: CHESS_FEN, CHESS_MOVES="e2e4 e7e5" (UCI), CHESS_VS=easy|medium|hard, CHESS_SELECT=e2, CHESS_FLIP=1, CHESS_DARK=1, CHESS_AUTOPLAY=1,
+#   CHESS_COACH_DEMO=1 (wait for analysis + review of the last move), CHESS_HINT=1 (show hint arrow and card)
+CHESS_SETTINGS_SNAPSHOT=/abs/settings.png .build/debug/ChessApp   # render SettingsView (460 pt wide) instead
+# snapshot runs use in-memory settings and keys and a transport that never touches the network
 ./build.sh                       # dist/Chess.app
 ```
 

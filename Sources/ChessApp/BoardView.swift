@@ -36,6 +36,7 @@ struct BoardView: View {
             squaresLayer
             overlayLayer
             piecesLayer
+            arrowLayer
             promotionAnchor
         }
         .frame(width: side, height: side)
@@ -142,6 +143,17 @@ struct BoardView: View {
         .frame(width: side, height: side, alignment: .topLeading)
         .animation(.easeInOut(duration: 0.15), value: model.pieces)
         .animation(.easeInOut(duration: 0.15), value: model.whiteAtBottom)
+        .allowsHitTesting(false)
+    }
+
+    private var arrowLayer: some View {
+        ZStack {
+            if let arrow = model.coach.visibleArrow {
+                ArrowShape(from: center(of: arrow.from), to: center(of: arrow.to), square: sq)
+                    .fill(Palette.arrow)
+            }
+        }
+        .frame(width: side, height: side, alignment: .topLeading)
         .allowsHitTesting(false)
     }
 

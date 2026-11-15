@@ -60,7 +60,7 @@ Create the `ChessCoach` library target and `ChessCoachTests` in `Package.swift` 
 
 Implement `Coach` and `MoveReview.summary` in `Sources/ChessCoach/Review.swift` per "ChessCoach: move review". Tests: win chance values (0 cp = 0.5, symmetric, mate = 1/0); each threshold boundary; playing the engine move is always `best`; single legal move is `best`; a queen hang reviewed end to end with real `Engine.analyse` calls is a blunder naming the better move; missed mate and allowed mate copy; `format` strings; Black's point of view.
 
-## 11. Coach in the app — careful — after 10 — [ ]
+## 11. Coach in the app — careful — after 10 — [x]
 
 Wire the coach into `ChessApp` per "ChessApp: coach behaviour" and "Design additions", except the Versus AI model mode: background analysis with cache and cancellation, reviews per ply (and their removal on undo), evaluation bar, arrow, move list marks and click-to-inspect, coach card, hint (button and ⇧⌘H), AI explanations through `LLMClient`, settings storage, Keychain key store behind a protocol, the Settings window with "Test connection", and the three headless hooks. Tests in `ChessAppTests` with a stub transport and an in-memory key store: a blunder gets reviewed and marked; undo drops reviews; hint sets the arrow and the next move clears it; AI text replaces the placeholder; an AI failure leaves the rule-based text; nothing is requested when AI is off. Verify with snapshots: a reviewed blunder, the hint arrow, the settings form, dark mode.
 

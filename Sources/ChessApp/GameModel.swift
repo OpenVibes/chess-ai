@@ -2,6 +2,7 @@ import SwiftUI
 import Observation
 import ChessCore
 import ChessEngine
+import ChessCoach
 
 enum GameMode: Equatable { case twoPlayers, versusComputer }
 
@@ -64,10 +65,20 @@ final class GameModel {
 
     var pieces: [PieceItem] { pieceStack[pieceStack.count - 1] }
 
-    init(position: Position = .start) {
+    /// The coach: background analysis, reviews, hints (see `CoachModel.swift`).
+    let coach: CoachModel
+
+    /// `settings` defaults to throwaway in-memory settings with the coach off, so a bare `GameModel()` never
+    /// touches UserDefaults, the Keychain or the network. The app passes real ones (`fromEnvironment`).
+    init(position: Position = .start, settings: CoachSettings? = nil, transport: LLMTransport? = nil,
+         analysisLimits: AnalysisLimits = AnalysisLimits()) {
         game = Game(position: position)
         pieceStack = []
+        coach = CoachModel(settings: settings ?? CoachSettings.inMemory(coachEnabled: false),
+                           transport: transport ?? URLSessionTransport(), limits: analysisLimits)
         pieceStack = [makeItems(for: position)]
+        coach.host = self
+        coach.positionChanged()
     }
 
     private func makeItems(for position: Position) -> [PieceItem] {
@@ -112,6 +123,11 @@ final class GameModel {
     }
 
     var canUndo: Bool { !game.history.isEmpty }
+
+    /// The lightbulb and the Hint menu item: coach and hints on, and it is a human's turn.
+    var canHint: Bool { coach.hintAvailable && canInteract }
+
+    func requestHint() { coach.requestHint() }
 
     var bottomColor: PieceColor { whiteAtBottom ? .white : .black }
     var topColor: PieceColor { bottomColor.opposite }
@@ -207,6 +223,7 @@ final class GameModel {
             pieceStack.removeLast()
         } while mode == .versusComputer && sideToMove != humanColor && !game.history.isEmpty
         gameOverDismissed = false
+        coach.didUndo()
         positionDidChange()
     }
 
@@ -222,6 +239,7 @@ final class GameModel {
         pendingPromotion = nil
         gameOverDismissed = false
         whiteAtBottom = (mode == .versusComputer) ? (humanColor == .white) : true
+        coach.reset()
         positionDidChange()
     }
 
@@ -229,6 +247,7 @@ final class GameModel {
     @discardableResult
     func perform(_ move: Move) -> Bool {
         let before = game.position
+        let byHuman = mode == .twoPlayers || before.sideToMove == humanColor
         guard game.play(move) else { return false }
         var items = pieces
         if let mover = items.firstIndex(where: { $0.square == move.from }) {
@@ -252,6 +271,7 @@ final class GameModel {
         pieceStack.append(items)
         selected = nil
         gameOverDismissed = false
+        coach.didPlay(byHuman: byHuman)
         positionDidChange()
         return true
     }
@@ -259,6 +279,7 @@ final class GameModel {
     /// Called after every move, undo and new game: cancels any running search, then starts one if it is the computer's turn.
     func positionDidChange() {
         cancelSearch()
+        coach.positionChanged()
         guard computerEnabled, mode == .versusComputer, !isGameOver, sideToMove != humanColor else { return }
         startSearch()
     }

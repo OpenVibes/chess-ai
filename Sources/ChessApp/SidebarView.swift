@@ -1,5 +1,6 @@
 import SwiftUI
 import ChessCore
+import ChessCoach
 
 struct SidebarView: View {
     let model: GameModel
@@ -12,6 +13,7 @@ struct SidebarView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             MoveList(model: model)
+            if model.coach.enabled { CoachCard(model: model) }
             PlayerStrip(model: model, color: model.bottomColor)
             HStack(spacing: 8) {
                 Button { model.showingNewGame = true } label: {
@@ -119,14 +121,26 @@ private struct MoveList: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
     }
 
+    private func cellText(_ san: String, mark: (text: String, quality: MoveQuality)?) -> Text {
+        guard let mark else { return Text(san) }
+        return Text(san) + Text(mark.text).foregroundColor(mark.quality.color)
+    }
+
     @ViewBuilder
     private func cell(index: Int, history: [MoveRecord]) -> some View {
         if index < history.count {
             let latest = index == history.count - 1
-            Text(history[index].san)
+            let mark = model.coach.mark(ply: index)
+            let inspected = model.coach.enabled && model.coach.inspectedPly == index
+            cellText(history[index].san, mark: mark)
                 .padding(.horizontal, 6).padding(.vertical, 1)
                 .background(RoundedRectangle(cornerRadius: 4)
                     .fill(latest ? Color.accentColor.opacity(0.28) : .clear))
+                .overlay(RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(Color.accentColor, lineWidth: 1)
+                    .opacity(inspected ? 1 : 0))
+                .contentShape(Rectangle())
+                .onTapGesture { if mark != nil || model.coach.reviews[index] != nil { model.coach.inspect(ply: index) } }
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
