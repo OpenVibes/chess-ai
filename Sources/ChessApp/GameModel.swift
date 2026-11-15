@@ -4,7 +4,20 @@ import ChessCore
 import ChessEngine
 import ChessCoach
 
-enum GameMode: Equatable { case twoPlayers, versusComputer }
+enum GameMode: Equatable { case twoPlayers, versusComputer, versusModel }
+
+/// Something the coach card says about the opponent (engine fallback notice, or a model error).
+enum OpponentMessage: Equatable {
+    case notice(String)
+    case error(String)
+}
+
+/// Result of asking the model for a move.
+private enum ModelTurnOutcome: Sendable {
+    case move(Move)
+    case noLegalMove
+    case failed(String)
+}
 
 /// A piece on the board with a stable identity, so SwiftUI can animate it between squares.
 struct PieceItem: Identifiable, Equatable {
@@ -58,6 +71,10 @@ final class GameModel {
 
     @ObservationIgnored private var searchGeneration = 0
     @ObservationIgnored private var searchFlag: CancelFlag?
+    @ObservationIgnored private var searchTask: Task<Void, Never>?
+
+    /// Fallback notice or error from the model opponent, shown in the coach card as "Opponent".
+    private(set) var opponentMessage: OpponentMessage?
 
     /// Pieces with stable ids; one snapshot per position so undo restores identities.
     private var pieceStack: [[PieceItem]]
@@ -101,9 +118,12 @@ final class GameModel {
 
     var canInteract: Bool {
         if isGameOver || isThinking { return false }
-        if mode == .versusComputer && sideToMove != humanColor { return false }
+        if hasNonHumanOpponent && sideToMove != humanColor { return false }
         return true
     }
+
+    /// One human plays against the engine or a model.
+    var hasNonHumanOpponent: Bool { mode != .twoPlayers }
 
     var legalTargets: Set<Square> {
         guard let selected else { return [] }
@@ -137,7 +157,15 @@ final class GameModel {
         case .twoPlayers: return color == .white ? "White" : "Black"
         case .versusComputer:
             return color == humanColor ? "You" : "Computer · \(difficulty.rawValue.capitalized)"
+        case .versusModel:
+            return color == humanColor ? "You" : modelName
         }
+    }
+
+    /// The opponent model's name for the strip and status line.
+    var modelName: String {
+        let name = coach.settings.modelConfig.model.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "AI model" : name
     }
 
     /// Material on the board for one colour, in pawns.
@@ -165,7 +193,7 @@ final class GameModel {
 
     var statusText: String {
         if let resultText { return resultText }
-        if isThinking { return "Computer is thinking…" }
+        if isThinking { return mode == .versusModel ? "\(modelName) is thinking…" : "Computer is thinking…" }
         if game.position.isInCheck { return "Check" }
         return sideToMove == .white ? "White to move" : "Black to move"
     }
@@ -221,7 +249,7 @@ final class GameModel {
         repeat {
             guard game.undo() else { break }
             pieceStack.removeLast()
-        } while mode == .versusComputer && sideToMove != humanColor && !game.history.isEmpty
+        } while hasNonHumanOpponent && sideToMove != humanColor && !game.history.isEmpty
         gameOverDismissed = false
         coach.didUndo()
         positionDidChange()
@@ -238,7 +266,7 @@ final class GameModel {
         selected = nil
         pendingPromotion = nil
         gameOverDismissed = false
-        whiteAtBottom = (mode == .versusComputer) ? (humanColor == .white) : true
+        whiteAtBottom = (mode != .twoPlayers) ? (humanColor == .white) : true
         coach.reset()
         positionDidChange()
     }
@@ -247,7 +275,7 @@ final class GameModel {
     @discardableResult
     func perform(_ move: Move) -> Bool {
         let before = game.position
-        let byHuman = mode == .twoPlayers || before.sideToMove == humanColor
+        let byHuman = !hasNonHumanOpponent || before.sideToMove == humanColor
         guard game.play(move) else { return false }
         var items = pieces
         if let mover = items.firstIndex(where: { $0.square == move.from }) {
@@ -276,30 +304,37 @@ final class GameModel {
         return true
     }
 
-    /// Called after every move, undo and new game: cancels any running search, then starts one if it is the computer's turn.
+    /// Called after every move, undo and new game: cancels any running search or request, then starts one if it is the opponent's turn.
     func positionDidChange() {
         cancelSearch()
+        opponentMessage = nil
         coach.positionChanged()
-        guard computerEnabled, mode == .versusComputer, !isGameOver, sideToMove != humanColor else { return }
-        startSearch()
+        guard computerEnabled, hasNonHumanOpponent, !isGameOver, sideToMove != humanColor else { return }
+        if mode == .versusModel { startModelTurn() } else { startSearch() }
     }
 
     private func cancelSearch() {
         searchGeneration += 1
         searchFlag?.cancel()
         searchFlag = nil
+        searchTask?.cancel()
+        searchTask = nil
         isThinking = false
     }
 
     private func startSearch() {
+        runEngineMove(level: difficulty, minimum: minimumThinkTime, notice: nil)
+    }
+
+    /// Searches off the main thread and plays the result. `notice` builds the card message from the SAN played.
+    private func runEngineMove(level: Difficulty, minimum: Double, notice: ((String) -> String)?) {
         let generation = searchGeneration
         let flag = CancelFlag()
         searchFlag = flag
         isThinking = true
         let snapshot = game
-        let level = difficulty
-        let minimum = minimumThinkTime
-        Task { @MainActor [weak self] in
+        let minimum = minimum
+        searchTask = Task { @MainActor [weak self] in
             let started = ContinuousClock.now
             let move = await Task.detached(priority: .userInitiated) {
                 Engine.bestMove(in: snapshot, difficulty: level, shouldStop: { flag.isCancelled })
@@ -312,8 +347,90 @@ final class GameModel {
                 guard generation == self.searchGeneration, !flag.isCancelled else { return }
             }
             self.searchFlag = nil
+            self.searchTask = nil
             self.isThinking = false
-            if let move { self.perform(move) }
+            if let move {
+                let san = self.game.position.san(for: move)
+                if self.perform(move), let notice { self.opponentMessage = .notice(notice(san)) }
+            }
         }
+    }
+
+    // MARK: Model opponent
+
+    /// "Try again" in the error card: asks the model once more for this turn.
+    func retryModelTurn() {
+        guard mode == .versusModel, !isGameOver, sideToMove != humanColor, !isThinking else { return }
+        opponentMessage = nil
+        startModelTurn()
+    }
+
+    /// "Let the engine move" in the error card: Medium plays this one move; the model is asked again next turn.
+    func letEngineMove() {
+        guard mode == .versusModel, !isGameOver, sideToMove != humanColor, !isThinking else { return }
+        opponentMessage = nil
+        runEngineMove(level: .medium, minimum: 0, notice: nil)
+    }
+
+    private func startModelTurn() {
+        let generation = searchGeneration
+        let flag = CancelFlag()
+        searchFlag = flag
+        isThinking = true
+        opponentMessage = nil
+        let snapshot = game
+        let client = LLMClient(config: coach.settings.modelConfig, apiKey: coach.settings.currentKey(),
+                               transport: coach.transport)
+        let name = modelName
+        let minimum = minimumThinkTime
+        searchTask = Task { @MainActor [weak self] in
+            let started = ContinuousClock.now
+            let outcome = await Self.askModel(client, game: snapshot)
+            guard let self, generation == self.searchGeneration, !flag.isCancelled else { return }
+            switch outcome {
+            case .failed(let message):
+                self.searchFlag = nil
+                self.searchTask = nil
+                self.isThinking = false
+                self.opponentMessage = .error(message)
+            case .move(let move):
+                let wait = Duration.seconds(minimum) - started.duration(to: .now)
+                if wait > .zero {
+                    try? await Task.sleep(for: wait)
+                    guard generation == self.searchGeneration, !flag.isCancelled else { return }
+                }
+                self.searchFlag = nil
+                self.searchTask = nil
+                self.isThinking = false
+                self.perform(move)
+            case .noLegalMove:
+                self.searchFlag = nil
+                self.searchTask = nil
+                self.runEngineMove(level: .medium, minimum: 0) {
+                    "\(name) gave no legal move, so the engine played \($0)."
+                }
+            }
+        }
+    }
+
+    /// One request plus at most two retries. Never judges the move: `MoveParser` and `Position` decide legality.
+    private nonisolated static func askModel(_ client: LLMClient, game: Game) async -> ModelTurnOutcome {
+        var messages = [ChatMessage(role: .user, content: CoachPrompts.opponentTurn(game: game))]
+        let legalSAN = game.position.legalMoves().map { game.position.san(for: $0) }
+        for attempt in 0..<3 {
+            do {
+                let reply = try await client.complete(system: CoachPrompts.opponentSystem, messages: messages, maxTokens: 4000)
+                if let move = MoveParser.parse(reply, in: game.position) { return .move(move) }
+                if attempt < 2 {
+                    messages.append(ChatMessage(role: .assistant, content: reply))
+                    messages.append(ChatMessage(role: .user, content: CoachPrompts.opponentRetry(rejected: reply, legalSAN: legalSAN)))
+                }
+            } catch is CancellationError {
+                return .failed("Cancelled.")
+            } catch {
+                return .failed(error.localizedDescription)
+            }
+        }
+        return .noLegalMove
     }
 }

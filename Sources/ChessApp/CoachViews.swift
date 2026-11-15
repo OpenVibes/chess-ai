@@ -80,12 +80,14 @@ struct CoachCard: View {
 
     private enum Content {
         case empty
+        case opponent(OpponentMessage)
         case hint(HintInfo)
         case review(ply: Int, review: MoveReview, ai: AIText)
     }
 
     private var content: Content {
         let coach = model.coach
+        if let message = model.opponentMessage { return .opponent(message) }
         if let hint = coach.hint { return .hint(hint) }
         if let ply = coach.displayedPly, let review = coach.reviews[ply] {
             return .review(ply: ply, review: review, ai: coach.explanations[ply] ?? .none)
@@ -110,6 +112,8 @@ struct CoachCard: View {
             switch content {
             case .empty:
                 Text("Coach").font(.system(size: 13, weight: .semibold))
+            case .opponent:
+                Text("Opponent").font(.system(size: 13, weight: .semibold))
             case .hint:
                 Text("Hint").font(.system(size: 13, weight: .semibold))
             case .review(let ply, let review, _):
@@ -136,6 +140,11 @@ struct CoachCard: View {
                 switch content {
                 case .empty:
                     Text("Play a move and I will tell you how good it was.")
+                case .opponent(let message):
+                    switch message {
+                    case .notice(let text): Text(text)
+                    case .error(let text): Text(text).lineLimit(2).truncationMode(.tail)
+                    }
                 case .hint(let hint):
                     Text("Try \(hint.san).")
                     aiLines(hint.ai)
@@ -169,6 +178,16 @@ struct CoachCard: View {
 
     @ViewBuilder
     private var footer: some View {
+        if case .opponent(.error) = content {
+            HStack(spacing: 12) {
+                Button("Try again") { model.retryModelTurn() }
+                Button("Let the engine move") { model.letEngineMove() }
+                Spacer(minLength: 0)
+            }
+            .buttonStyle(.borderless).foregroundStyle(Color.accentColor)
+            .font(.system(size: 12))
+            .frame(height: 16)
+        } else
         if case .review(let ply, let review, _) = content, review.quality.isBad, let best = review.bestSAN {
             if ply == model.game.history.count - 1, review.bestMove != nil {
                 Button("Show better move") { model.coach.showBetterMove(ply: ply) }

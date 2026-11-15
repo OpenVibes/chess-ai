@@ -92,13 +92,19 @@ extension GameModel {
         if let fen = env["CHESS_FEN"], let p = Position(fen: fen) { position = p }
         let headless = !(env["CHESS_SNAPSHOT"] ?? "").isEmpty
         let anySnapshot = headless || !(env["CHESS_SETTINGS_SNAPSHOT"] ?? "").isEmpty
+            || !(env["CHESS_NEWGAME_SNAPSHOT"] ?? "").isEmpty
+        let versusModel = (env["CHESS_VS"] ?? "").lowercased() == "model"
         // Snapshot runs use in-memory settings and keys and have no network; the real app uses UserDefaults and the Keychain.
+        // CHESS_VS=model gets a fake key so the model counts as usable (CHESS_NOKEY=1 leaves it out); it never leaves the process.
+        let fakeKeys = (versusModel && env["CHESS_NOKEY"] != "1") ? ["api.anthropic.com": "sk-headless-fake"] : [:]
         let model = anySnapshot
-            ? GameModel(position: position, settings: .inMemory(), transport: NoNetworkTransport())
+            ? GameModel(position: position, settings: .inMemory(keys: fakeKeys), transport: NoNetworkTransport())
             : GameModel(position: position, settings: .production())
         let demo = env["CHESS_COACH_DEMO"] == "1"
         model.computerEnabled = !headless || env["CHESS_AUTOPLAY"] == "1"
-        if let vs = env["CHESS_VS"], let d = Difficulty(rawValue: vs.lowercased()) {
+        if versusModel {
+            model.newGame(mode: .versusModel, humanColor: .white, difficulty: .medium, position: position)
+        } else if let vs = env["CHESS_VS"], let d = Difficulty(rawValue: vs.lowercased()) {
             model.newGame(mode: .versusComputer, humanColor: .white, difficulty: d, position: position)
         }
         if anySnapshot { model.coach.beginReplay() }
@@ -136,6 +142,17 @@ enum SnapshotHook {
                 let view = SettingsView(settings: model.coach.settings, transport: NoNetworkTransport())
                     .background(Color(nsColor: .windowBackgroundColor))
                 await capture(view, width: 460, height: nil, dark: dark, path: path)
+            }
+            return
+        }
+        if let path = env["CHESS_NEWGAME_SNAPSHOT"], !path.isEmpty {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                let preset: GameMode? = (env["CHESS_VS"] ?? "").lowercased() == "model" ? .versusModel
+                    : (Difficulty(rawValue: (env["CHESS_VS"] ?? "").lowercased()) != nil ? .versusComputer : nil)
+                let view = NewGameSheet(model: model, initialMode: preset)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                await capture(view, width: 400, height: nil, dark: dark, path: path)
             }
             return
         }

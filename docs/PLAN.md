@@ -64,7 +64,7 @@ Implement `Coach` and `MoveReview.summary` in `Sources/ChessCoach/Review.swift` 
 
 Wire the coach into `ChessApp` per "ChessApp: coach behaviour" and "Design additions", except the Versus AI model mode: background analysis with cache and cancellation, reviews per ply (and their removal on undo), evaluation bar, arrow, move list marks and click-to-inspect, coach card, hint (button and ⇧⌘H), AI explanations through `LLMClient`, settings storage, Keychain key store behind a protocol, the Settings window with "Test connection", and the three headless hooks. Tests in `ChessAppTests` with a stub transport and an in-memory key store: a blunder gets reviewed and marked; undo drops reviews; hint sets the arrow and the next move clears it; AI text replaces the placeholder; an AI failure leaves the rule-based text; nothing is requested when AI is off. Verify with snapshots: a reviewed blunder, the hint arrow, the settings form, dark mode.
 
-## 12. Versus AI model mode — medium — after 11 — [ ]
+## 12. Versus AI model mode — medium — after 11 — [x]
 
 Add the third mode per the spec: `GameMode.versusModel`, the request / parse / retry / engine-fallback loop, error state with "Try again" and "Let the engine move", cancellation on new game and undo, status line and opponent strip with the model name, and the new game sheet changes. Tests with a stub transport: a legal reply is played; an illegal reply then a legal one plays the second; three bad replies fall back to the engine with the notice; an HTTP 401 stops with the error and "Try again" works; undo and new game cancel a pending request; the human playing Black gets the model's first move.
 

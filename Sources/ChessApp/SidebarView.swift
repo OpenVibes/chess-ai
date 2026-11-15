@@ -11,9 +11,10 @@ struct SidebarView: View {
             Text(model.statusText)
                 .font(.system(size: 15, weight: .semibold))
                 .lineLimit(1)
+                .truncationMode(.middle)
                 .minimumScaleFactor(0.8)
             MoveList(model: model)
-            if model.coach.enabled { CoachCard(model: model) }
+            if model.coach.enabled || model.opponentMessage != nil { CoachCard(model: model) }
             PlayerStrip(model: model, color: model.bottomColor)
             HStack(spacing: 8) {
                 Button { model.showingNewGame = true } label: {
@@ -58,6 +59,7 @@ private struct PlayerStrip: View {
                 Text(model.playerName(color))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
+                    .truncationMode(.middle)
                 Spacer(minLength: 8)
                 if lead > 0 {
                     Text("+\(lead)")

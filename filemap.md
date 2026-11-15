@@ -16,7 +16,7 @@
 - `Sources/ChessEngine/Evaluation.swift` — material, piece-square tables, tapered king table, bishop pair
 - `Sources/ChessEngine/Analysis.swift` — Score, PositionAnalysis, AnalysisLimits and `Engine.analyse` (deterministic search with White-POV score, mate distance and principal variation)
 - `Sources/ChessApp/ChessApp.swift` — @main app, window, Game menu (Hint ⇧⌘H), Settings scene, MainView layout (eval bar + board), CHESS_* snapshot hooks (NSHostingView + cacheDisplay; main window or `SettingsView`)
-- `Sources/ChessApp/GameModel.swift` — @Observable GameModel: game, mode, selection, promotion, undo, identity-tracked pieces for animation, owns `coach`, computer opponent (`positionDidChange()` starts/cancels an off-main-thread `Engine.bestMove` search, generation counter, 0.4 s minimum think time)
+- `Sources/ChessApp/GameModel.swift` — @Observable GameModel: game, mode, selection, promotion, undo, identity-tracked pieces for animation, owns `coach`, computer and model opponents (`positionDidChange()` starts/cancels an off-main-thread `Engine.bestMove` search or an `LLMClient` move request with retries and engine fallback, generation counter, 0.4 s minimum think time; `opponentMessage`, `hasNonHumanOpponent`)
 - `Sources/ChessApp/BoardView.swift` — board squares, coordinates, highlights, pieces, arrow overlay (above pieces), click and drag gesture, promotion popover anchor
 - `Sources/ChessApp/PieceGlyph.swift` — Palette colours and the Unicode glyph piece view
 - `Sources/ChessApp/SidebarView.swift` — player strips, status line, move list (quality marks, click-to-inspect), coach card, button row
@@ -43,5 +43,6 @@
 - `Tests/ChessEngineTests/ChessEngineTests.swift` — engine tests (mates in 1 and 2, tactics, legality playouts, evaluation, timing, cancellation, repetition)
 - `Tests/ChessEngineTests/AnalysisTests.swift` — Engine.analyse tests (mates both colours, hanging queen, checkmate/stalemate, PV legality, timing, shouldStop, determinism)
 - `Tests/ChessAppTests/CoachModelTests.swift` — coach tests with a counting stub `LLMTransport`, in-memory keys and short analysis limits: reviews and marks, undo, hint, AI states, settings round trip, usable model
+- `Tests/ChessAppTests/ModelOpponentTests.swift` — Versus AI model tests with a queued stub `LLMTransport`: play, retry, engine fallback with notice, 401 and try again, engine move, undo and new game cancel, human as Black
 - `Tests/ChessAppTests/GameModelTests.swift` — GameModel tests: selection, promotion, piece identity, undo, game over, versus-computer flow (`@testable import ChessApp`)
 - `build.sh`, `make-icon.py` — app bundle and icon (task 7)
