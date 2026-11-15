@@ -24,7 +24,7 @@ Plus FEN round-trip tests and targeted tests for castling-rights loss on rook ca
 
 Implement `Game`, `MoveRecord`, `GameStatus` and SAN generation in `ChessCore` (separate files from task 2's). Status priority and draw rules per SPEC. Tests: fool's mate and scholar's mate end in checkmate with correct SAN (`Qh4#`, `Qxf7#`); a stalemate FEN; threefold by knight shuffling; fifty-move; each insufficient-material case; SAN disambiguation (file, rank, both), castling, en passant, promotion with check; undo restores position, history and status.
 
-## 4. Computer opponent — careful — after 2 — [ ]
+## 4. Computer opponent — careful — after 2 — [x]
 
 Implement `Engine` in `ChessEngine` per SPEC (search, evaluation, three levels). Needs only `Position` from task 2 plus `Game.history` for repetition; if task 3 is not merged yet, read repetition keys defensively. Tests: finds mate in 1 and mate in 2 on Medium and Hard for at least three positions each; never returns an illegal move over 200 random-playout positions; takes a hanging queen; Hard returns within 2.5 s; `shouldStop` returning true ends the search promptly. Only touches `Sources/ChessEngine` and `Tests/ChessEngineTests`.
 

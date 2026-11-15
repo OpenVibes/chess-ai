@@ -11,13 +11,22 @@
 - `Sources/ChessCore/FEN.swift` — FEN parsing and printing
 - `Sources/ChessCore/Game.swift` — GameStatus, MoveRecord, Game (cached status, `repetitionKeys`)
 - `Sources/ChessCore/Notation.swift` — SAN generation (`san(for:in:)`, also `Position.san(for:)`)
-- `Sources/ChessEngine/Engine.swift` — Difficulty and Engine (search, evaluation)
-- `Sources/ChessApp/ChessApp.swift` — @main app, window, activation delegate
+- `Sources/ChessEngine/Engine.swift` — Difficulty and Engine (public entry points, level setup)
+- `Sources/ChessEngine/Search.swift` — Searcher: iterative deepening, PVS alpha-beta, quiescence, ordering, repetition handling, easy-level random pick
+- `Sources/ChessEngine/Evaluation.swift` — material, piece-square tables, tapered king table, bishop pair
+- `Sources/ChessApp/ChessApp.swift` — @main app, window, menu commands, MainView layout, CHESS_* snapshot hook (NSHostingView + cacheDisplay)
+- `Sources/ChessApp/GameModel.swift` — @Observable GameModel: game, mode, selection, promotion, undo, identity-tracked pieces for animation, `positionDidChange()` hook for task 6
+- `Sources/ChessApp/BoardView.swift` — board squares, coordinates, highlights, pieces, click and drag gesture, promotion popover anchor
+- `Sources/ChessApp/PieceGlyph.swift` — Palette colours and the Unicode glyph piece view
+- `Sources/ChessApp/SidebarView.swift` — player strips, status line, move list, button row
+- `Sources/ChessApp/NewGameSheet.swift` — new game sheet
+- `Sources/ChessApp/PromotionPicker.swift` — promotion popover content
+- `Sources/ChessApp/GameOverCard.swift` — result card over the board
 - `Tests/ChessCoreTests/ChessCoreTests.swift` — scaffold smoke test (game and SAN tests land here in task 3)
 - `Tests/ChessCoreTests/GameTests.swift` — game status, draws, play/undo, captured pieces
 - `Tests/ChessCoreTests/NotationTests.swift` — SAN cases
 - `Tests/ChessCoreTests/PerftTests.swift` — perft reference counts, timing
 - `Tests/ChessCoreTests/FENTests.swift` — FEN round-trip and malformed input
 - `Tests/ChessCoreTests/PositionTests.swift` — castling, en passant, promotion, clocks, draws, repetition key
-- `Tests/ChessEngineTests/ChessEngineTests.swift` — engine tests
+- `Tests/ChessEngineTests/ChessEngineTests.swift` — engine tests (mates in 1 and 2, tactics, legality playouts, evaluation, timing, cancellation, repetition)
 - `build.sh`, `make-icon.py` — app bundle and icon (task 7)
