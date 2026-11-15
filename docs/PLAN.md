@@ -56,7 +56,7 @@ Add `Score`, `PositionAnalysis`, `AnalysisLimits` and `Engine.analyse` to `Chess
 
 Create the `ChessCoach` library target and `ChessCoachTests` in `Package.swift` (`ChessApp` depends on it). Implement "ChessCoach: AI model access" and "ChessCoach: prompts and reply parsing": `ModelConfig`, presets, `LLMClient` for both formats, `LLMError`, `LLMTransport`, `CoachPrompts`, `MoveParser`. `CoachPrompts.explainMove` takes a `MoveReview`, which task 10 owns: declare `MoveQuality` and `MoveReview` exactly as in the spec in `Sources/ChessCoach/Review.swift` (stored properties and a memberwise public init; leave `summary` returning ""), and do not write `Coach`. Tests with a stub transport, no network: exact URL, headers and JSON body for each format (including the fallback header rule and that no sampling fields are sent); reply extraction (text blocks only, skipping thinking); refusal; every status mapping; missing key; `MoveParser` on SAN, UCI, castling spelt with zeros, promotion, decorated moves, the `MOVE:` line, prose around the move, ambiguous and illegal replies.
 
-## 10. Move review — medium — after 8 and 9 — [ ]
+## 10. Move review — medium — after 8 and 9 — [x]
 
 Implement `Coach` and `MoveReview.summary` in `Sources/ChessCoach/Review.swift` per "ChessCoach: move review". Tests: win chance values (0 cp = 0.5, symmetric, mate = 1/0); each threshold boundary; playing the engine move is always `best`; single legal move is `best`; a queen hang reviewed end to end with real `Engine.analyse` calls is a blunder naming the better move; missed mate and allowed mate copy; `format` strings; Black's point of view.
 

@@ -23,11 +23,12 @@
 - `Sources/ChessApp/NewGameSheet.swift` — new game sheet
 - `Sources/ChessApp/PromotionPicker.swift` — promotion popover content
 - `Sources/ChessApp/GameOverCard.swift` — result card over the board
-- `Sources/ChessCoach/Review.swift` — `MoveQuality` and `MoveReview` (task 9 declares them, task 10 fills `summary`)
+- `Sources/ChessCoach/Review.swift` — `MoveQuality` and `MoveReview` and `Coach` (win chance, classify, review, format); `MoveReview.summary` copy
 - `Sources/ChessCoach/LLMClient.swift` — ProviderKind, ModelConfig, ProviderPreset, ChatMessage, LLMError, LLMTransport, URLSessionTransport, LLMClient (Anthropic and OpenAI-compatible wire formats)
 - `Sources/ChessCoach/CoachPrompts.swift` — coach and opponent prompts
 - `Sources/ChessCoach/MoveParser.swift` — finds a legal move in free-text model replies (SAN or UCI)
 - `Tests/ChessCoachTests/LLMClientTests.swift` — stub-transport tests for both wire formats, status mapping, errors
+- `Tests/ChessCoachTests/CoachTests.swift` — Coach win chance, thresholds, review, summary copy, format, end-to-end blunders
 - `Tests/ChessCoachTests/MoveParserTests.swift` — parser and prompt tests
 - `Tests/ChessCoreTests/ChessCoreTests.swift` — scaffold smoke test (game and SAN tests land here in task 3)
 - `Tests/ChessCoreTests/GameTests.swift` — game status, draws, play/undo, captured pieces
