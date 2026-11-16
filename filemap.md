@@ -46,3 +46,4 @@
 - `Tests/ChessAppTests/ModelOpponentTests.swift` — Versus AI model tests with a queued stub `LLMTransport`: play, retry, engine fallback with notice, 401 and try again, engine move, undo and new game cancel, human as Black
 - `Tests/ChessAppTests/GameModelTests.swift` — GameModel tests: selection, promotion, piece identity, undo, game over, versus-computer flow (`@testable import ChessApp`)
 - `build.sh`, `make-icon.py` — app bundle and icon (task 7)
+- `website/` — product site (static HTML) deployed to Vercel project `chess-for-mac`; `website/publish.sh` copies the DMG from `dist/` and deploys. Live at https://chess-for-mac.vercel.app

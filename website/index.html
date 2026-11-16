@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess for Mac: a coach on every move</title>
+<meta name="description" content="A free native chess app for macOS. The built-in engine grades every move from Best to Blunder, and the AI model you choose explains why. Or play against that model.">
+<meta property="og:title" content="Chess for Mac: a coach on every move">
+<meta property="og:description" content="Every move graded from Best to Blunder. Your favourite AI model explains why, or plays you.">
+<meta property="og:image" content="/img/og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#FAF6EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151311" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FAF6EE;
+  --surface: #FFFFFF;
+  --surface-2: #F3ECDF;
+  --ink: #1F1B18;
+  --muted: #776C61;
+  --faint: #A79C90;
+  --line: rgba(31, 27, 24, .10);
+  --shadow: 0 1px 2px rgba(31,27,24,.06), 0 12px 32px -12px rgba(31,27,24,.22);
+  --board-light: #EAD9B8;
+  --board-dark: #A9794F;
+  --pill: #F2C94C;
+  --pill-ink: #1F1B18;
+  --q-best: #5B8C3A;
+  --q-good: #7A9A6A;
+  --q-inacc: #E0A526;
+  --q-mistake: #E07B26;
+  --q-blunder: #D64545;
+  --btn: #1F1B18;
+  --btn-ink: #FAF6EE;
+  --radius: 22px;
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --glyph: "Apple Symbols", "Segoe UI Symbol", "Noto Sans Symbols 2", "DejaVu Sans", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151311; --surface: #1F1C19; --surface-2: #2A2622; --ink: #F5EFE6; --muted: #ADA295; --faint: #7D7368;
+    --line: rgba(255,255,255,.10); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px -14px rgba(0,0,0,.7);
+    --btn: #F5EFE6; --btn-ink: #151311; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151311; --surface: #1F1C19; --surface-2: #2A2622; --ink: #F5EFE6; --muted: #ADA295; --faint: #7D7368;
+  --line: rgba(255,255,255,.10); --shadow: 0 1px 2px rgba(0,0,0,.4), 0 16px 40px -14px rgba(0,0,0,.7);
+  --btn: #F5EFE6; --btn-ink: #151311; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 17px/1.55 var(--body); -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+.wrap { width: min(1160px, 100% - 32px); margin-inline: auto; }
+.glyph { font-family: var(--glyph); font-variant-emoji: text; }
+
+/* nav */
+nav.top {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid transparent; transition: border-color .2s;
+}
+nav.top.scrolled { border-bottom-color: var(--line); }
+nav.top .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 800 21px/1 var(--display); letter-spacing: -.02em; }
+.brand img { width: 30px; height: 30px; border-radius: 8px; }
+.links { display: flex; gap: 22px; font-size: 15px; color: var(--muted); }
+.links a { text-decoration: none; transition: color .15s; }
+.links a:hover { color: var(--ink); }
+.nav-cta { margin-left: auto; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer;
+  border: 0; border-radius: 999px; font: 600 15px/1 var(--body); padding: 12px 18px;
+  background: var(--btn); color: var(--btn-ink);
+  transition: transform .15s, box-shadow .2s;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(31,27,24,.5); }
+.btn:active { transform: translateY(0); }
+.btn.big { padding: 18px 26px; font-size: 17px; }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn.ghost:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.btn svg { width: 18px; height: 18px; flex: none; }
+
+/* hero */
+.hero { padding: 72px 0 40px; text-align: center; position: relative; }
+.chips {
+  display: flex; justify-content: center; align-items: flex-end; gap: 14px; margin-bottom: 34px; flex-wrap: wrap;
+}
+.chip {
+  font: 700 18px/1 var(--display); padding: 12px 16px; border-radius: 16px;
+  background: var(--surface); box-shadow: var(--shadow); display: inline-flex; gap: 8px; align-items: center;
+  animation: bob 5s ease-in-out infinite; position: relative;
+}
+.chip .mk { font-weight: 800; }
+.chip:nth-child(1) { transform: rotate(-6deg); animation-delay: -1s; }
+.chip:nth-child(2) { transform: rotate(3deg) translateY(-14px); animation-delay: -2.5s; }
+.chip:nth-child(3) { transform: rotate(-2deg) translateY(-24px); animation-delay: -.4s; }
+.chip:nth-child(4) { transform: rotate(5deg) translateY(-10px); animation-delay: -3.2s; }
+.chip:nth-child(5) { transform: rotate(-4deg); animation-delay: -1.8s; }
+@keyframes bob { 50% { translate: 0 -7px; } }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+.chip small { font: 500 12px/1 var(--body); color: var(--muted); }
+.chip.tag-yours { background: var(--ink); color: var(--bg); }
+.chip.tag-yours .glyph { font-size: 22px; line-height: .8; }
+
+h1 {
+  font: 800 clamp(40px, 7vw, 84px)/1.04 var(--display); letter-spacing: -.035em; margin: 0 auto; max-width: 15ch;
+}
+h1 .line { display: block; }
+h1 .soft { color: var(--faint); }
+.hl {
+  position: relative; display: inline-flex; align-items: center; gap: .18em; color: var(--pill-ink);
+  padding: 0 .22em .02em; margin: 0 .02em; isolation: isolate; white-space: nowrap;
+}
+.hl::before {
+  content: ""; position: absolute; inset: .1em -.02em .02em; z-index: -1;
+  background: var(--pill); border-radius: .42em .32em .5em .28em; transform: rotate(-1.2deg) scaleX(0);
+  transform-origin: left; animation: swipe .7s cubic-bezier(.2,.8,.2,1) forwards;
+}
+.hl.b::before { background: var(--board-light); animation-delay: .35s; }
+.hl.g::before { background: #CFE3BF; animation-delay: .7s; }
+@keyframes swipe { to { transform: rotate(-1.2deg) scaleX(1); } }
+.hl .ic { font-size: .7em; display: inline-grid; place-items: center; }
+.hl .glyph { font-size: .82em; line-height: 1; }
+
+.lede { max-width: 640px; margin: 26px auto 0; font-size: 19px; color: var(--muted); }
+.lede strong { color: var(--ink); font-weight: 600; }
+.cta-row { display: flex; gap: 12px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
+.fine { margin-top: 14px; font-size: 13px; color: var(--faint); }
+.scribble { position: absolute; font: 500 14px/1.2 var(--body); color: var(--muted); }
+
+/* hero window */
+.stage { perspective: 1600px; margin-top: 64px; position: relative; }
+.window {
+  --tilt: 14deg;
+  width: min(1040px, 100%); margin: 0 auto; border-radius: 14px; overflow: hidden; background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line), 0 50px 100px -40px rgba(31,27,24,.45), 0 30px 60px -30px rgba(169,121,79,.35);
+  transform: rotateX(var(--tilt)) scale(calc(1 - var(--tilt) / 200deg)); transform-origin: 50% 0;
+  transition: transform .1s linear;
+}
+.window .bar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.window .bar i { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; }
+.window .bar i:nth-child(2) { background: #FEBC2E; } .window .bar i:nth-child(3) { background: #28C840; }
+.window .bar span { margin: 0 auto; font: 600 13px/1 var(--body); color: var(--muted); transform: translateX(-30px); }
+.tag {
+  position: absolute; z-index: 3; font: 600 14px/1 var(--body); padding: 9px 12px; border-radius: 10px;
+  color: #fff; box-shadow: 0 10px 24px -8px rgba(0,0,0,.35); white-space: nowrap;
+  animation: bob 6s ease-in-out infinite;
+}
+.tag::before {
+  content: ""; position: absolute; width: 14px; height: 14px; background: inherit; transform: rotate(45deg);
+  border-radius: 3px; z-index: -1;
+}
+.tag.t1 { background: var(--q-blunder); right: 15%; top: 15%; }
+.tag.t1::before { right: -4px; top: 10px; }
+.tag.t2 { background: var(--ink); color: var(--bg); left: 5.5%; top: 52%; animation-delay: -2s; }
+.tag.t2::before { left: -4px; top: 10px; }
+.tag.t3 { background: var(--q-best); right: 1%; top: 82%; animation-delay: -4s; }
+.tag.t3::before { left: 18px; top: -5px; }
+
+/* sections */
+section { padding: 110px 0; scroll-margin-top: 24px; }
+.eyebrow { font: 600 13px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--board-dark); }
+h2 { font: 800 clamp(34px, 5vw, 56px)/1.05 var(--display); letter-spacing: -.03em; margin: 14px 0 0; max-width: 18ch; }
+h2 .soft { color: var(--faint); }
+.sub { color: var(--muted); max-width: 620px; font-size: 18px; margin: 18px 0 0; }
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+
+/* try it */
+.try { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; margin-top: 54px; }
+.board-wrap { display: flex; gap: 12px; }
+.evalbar { width: 12px; border-radius: 4px; background: #1F1B18; position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.evalbar i { position: absolute; left: 0; right: 0; bottom: 0; background: #FBF7EF; transition: height .5s cubic-bezier(.2,.8,.2,1); }
+.board {
+  position: relative; flex: 1; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+  display: grid; grid-template-columns: repeat(8, 1fr); box-shadow: var(--shadow);
+}
+.sq { background: var(--board-dark); position: relative; }
+.sq.l { background: var(--board-light); }
+.sq.hl1::after { content: ""; position: absolute; inset: 0; background: rgba(242,201,76,.5); }
+.sq .c { position: absolute; font: 600 10px/1 var(--body); }
+.sq .c.r { left: 5px; top: 5px; } .sq .c.f { right: 5px; bottom: 4px; }
+.sq.l .c { color: var(--board-dark); } .sq:not(.l) .c { color: var(--board-light); }
+.pc {
+  position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%; display: grid; place-items: center;
+  transition: transform .45s cubic-bezier(.3,.9,.3,1), opacity .3s; z-index: 2; pointer-events: none;
+}
+.pc span { grid-area: 1/1; font-family: var(--glyph); font-size: min(7.6vw, 54px); line-height: 1; font-variant-emoji: text; }
+.pc .fill.b { color: #1F1B18; }
+.pc .fill.w { color: #FBF7EF; }
+.pc .out { color: #1F1B18; }
+.pc.gone { opacity: 0; }
+.arrows { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.arrows line { stroke-width: .17; stroke-linecap: round; opacity: 0; transition: opacity .3s; }
+.arrows .show { opacity: .82; }
+
+.panel { display: flex; flex-direction: column; gap: 18px; }
+.panel .q { font: 700 22px/1.25 var(--display); letter-spacing: -.01em; margin: 0; }
+.panel .q small { display: block; font: 500 15px/1.4 var(--body); color: var(--muted); margin-top: 6px; letter-spacing: 0; }
+.moves { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.moves button {
+  font: 700 20px/1 var(--display); padding: 16px 0; border-radius: 14px; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 0; box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: transform .15s, box-shadow .15s, background .2s;
+}
+.moves button:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.moves button.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+.card {
+  background: var(--surface); border-radius: 16px; padding: 18px 20px; min-height: 168px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.card .head { display: flex; align-items: center; gap: 10px; }
+.card .head b { font: 700 18px/1 var(--display); }
+.card .head .mv { color: var(--muted); font-size: 15px; }
+.card .head .ev { margin-left: auto; font: 600 14px/1 var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--faint); }
+.card p { margin: 10px 0 0; }
+.card .note { color: var(--muted); font-size: 15px; }
+.card .note b { color: var(--ink); font-weight: 600; }
+.card.pop { animation: pop .35s cubic-bezier(.2,.9,.3,1.3); }
+@keyframes pop { from { transform: scale(.97); opacity: .4; } }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.linkbtn { background: none; border: 0; padding: 0; font: 600 15px/1 var(--body); color: var(--board-dark); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.linkbtn:hover { text-decoration: underline; }
+.disclaim { font-size: 13px; color: var(--faint); }
+
+/* legend */
+.legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 40px; }
+.legend span { display: inline-flex; gap: 8px; align-items: center; padding: 9px 14px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font: 600 15px/1 var(--body); }
+.legend i { width: 9px; height: 9px; border-radius: 50%; }
+.legend em { font-style: normal; font-weight: 800; }
+
+/* steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; }
+.step { background: var(--surface); border-radius: var(--radius); padding: 28px; box-shadow: inset 0 0 0 1px var(--line); position: relative; overflow: hidden; }
+.step .n { font: 800 15px/1 var(--display); width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); }
+.step h3 { font: 700 23px/1.15 var(--display); letter-spacing: -.015em; margin: 22px 0 10px; }
+.step p { margin: 0; color: var(--muted); font-size: 16px; }
+.step .big-glyph { position: absolute; right: -10px; bottom: -34px; font-size: 150px; line-height: 1; opacity: .07; font-family: var(--glyph); }
+
+/* models */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: center; }
+.providers { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+.providers span { padding: 11px 16px; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); font: 600 15px/1 var(--body); }
+.providers span.any { background: transparent; box-shadow: inset 0 0 0 1.5px dashed var(--line); border: 1.5px dashed var(--faint); }
+.checks { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 12px; }
+.checks li { display: flex; gap: 12px; color: var(--muted); }
+.checks li::before { content: ""; flex: none; width: 20px; height: 20px; margin-top: 3px; border-radius: 6px; background: var(--q-best) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3.2 3L15 7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
+.checks b { color: var(--ink); font-weight: 600; }
+.shot { border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), var(--shadow); background: var(--surface); }
+.shot.tilt { transform: rotate(2deg); }
+
+/* versus */
+.versus {
+  background: #1F1B18; color: #F5EFE6; border-radius: 32px; padding: 72px clamp(24px, 6vw, 72px);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: center; position: relative; overflow: hidden;
+}
+.versus h2 { color: #F5EFE6; }
+.versus h2 .soft { color: #8F857A; }
+.versus .sub { color: #B8AEA2; }
+.versus .eyebrow { color: var(--pill); }
+.chat { display: grid; gap: 12px; }
+.bubble { max-width: 88%; padding: 14px 16px; border-radius: 16px; font-size: 15px; line-height: 1.45; }
+.bubble.app { background: #2E2A26; color: #D9CFC3; border-bottom-left-radius: 4px; }
+.bubble.app code { font: 500 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #F2C94C; }
+.bubble.model { justify-self: end; background: #3E6FD8; color: #fff; border-bottom-right-radius: 4px; }
+.bubble.model b { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bubble.sys { justify-self: center; background: transparent; color: #8F857A; font-size: 13px; padding: 4px; }
+.bubble.sys b { color: var(--q-best); }
+.versus .bgk { position: absolute; right: -40px; top: -60px; font: 400 360px/1 var(--glyph); color: #fff; opacity: .03; pointer-events: none; }
+
+/* features */
+.feat { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 48px; }
+.feat div { padding: 22px; border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.feat b { display: block; font: 700 18px/1.2 var(--display); margin-bottom: 6px; }
+.feat span { color: var(--muted); font-size: 15px; }
+
+/* download */
+.dl {
+  border-radius: 32px; padding: clamp(32px, 6vw, 72px); position: relative; overflow: hidden;
+  background:
+    radial-gradient(1200px 400px at 90% -10%, rgba(242,201,76,.35), transparent 60%),
+    linear-gradient(135deg, var(--board-light), #E2C79A);
+  color: #1F1B18; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 48px; align-items: center;
+}
+.dl h2 { color: #1F1B18; }
+.dl .sub { color: #5A4A3B; }
+.dl .icon { width: 120px; height: 120px; border-radius: 28px; box-shadow: 0 24px 48px -16px rgba(80,50,20,.5); }
+.dl .btn { background: #1F1B18; color: #FAF6EE; }
+.meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 18px; font-size: 14px; color: #5A4A3B; }
+.meta b { color: #1F1B18; font-weight: 600; }
+.install { background: rgba(255,255,255,.55); border-radius: 22px; padding: 26px; backdrop-filter: blur(6px); }
+.install h3 { font: 700 20px/1.2 var(--display); margin: 0 0 14px; }
+.install ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 15px; color: #3D3229; }
+.install code { font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(31,27,24,.08); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+.copy { margin-left: 6px; font: 600 12px/1 var(--body); border: 0; border-radius: 6px; padding: 5px 8px; background: #1F1B18; color: #FAF6EE; cursor: pointer; }
+.sha { margin-top: 14px; font: 500 11.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #6B5A49; word-break: break-all; }
+
+/* footer */
+footer { padding: 90px 0 0; overflow: hidden; }
+.foot { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; color: var(--muted); font-size: 15px; }
+.foot .cols { display: flex; gap: 56px; flex-wrap: wrap; }
+.foot h4 { margin: 0 0 12px; color: var(--ink); font: 600 15px/1 var(--body); }
+.foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.foot a { text-decoration: none; } .foot a:hover { color: var(--ink); }
+.wordmark {
+  font: 800 clamp(120px, 31vw, 420px)/.78 var(--display); letter-spacing: -.06em; text-align: center;
+  margin: 60px 0 0; user-select: none; white-space: nowrap;
+  background: linear-gradient(180deg, var(--board-dark) 20%, var(--board-light) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  transform: translateY(18%);
+}
+.wordmark .glyph { -webkit-text-fill-color: currentColor; color: var(--board-dark); font-size: .72em; vertical-align: .05em; }
+
+@media (max-width: 900px) {
+  .links { display: none; }
+  .try, .split, .versus, .dl { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; }
+  .feat { grid-template-columns: repeat(2, 1fr); }
+  .tag { display: none; }
+  .shot.tilt { transform: none; }
+  section { padding: 80px 0; }
+}
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .hero { padding-top: 44px; }
+  .chip { font-size: 15px; padding: 10px 12px; }
+  .chip:nth-child(5) { display: none; }
+  .moves { grid-template-columns: repeat(2, 1fr); }
+  .feat { grid-template-columns: 1fr; }
+  .lede { font-size: 17px; }
+  .hl { white-space: normal; }
+  .nav-cta .lbl { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { animation: none !important; transition: none !important; }
+  .hl::before { transform: rotate(-1.2deg); }
+  .reveal { opacity: 1; transform: none; }
+  .window { transform: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="top" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="/img/icon-512.png" alt="">Chess</a>
+    <div class="links">
+      <a href="#try">Try a move</a>
+      <a href="#coach">The coach</a>
+      <a href="#models">AI models</a>
+      <a href="#versus">Versus AI</a>
+    </div>
+    <a class="btn nav-cta" href="#download">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 16h12"/></svg>
+      <span class="lbl">Download for Mac</span>
+    </a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="chips" aria-hidden="true">
+      <span class="chip"><i class="dot" style="background:var(--q-blunder)"></i>g6<span class="mk" style="color:var(--q-blunder)">??</span></span>
+      <span class="chip"><i class="dot" style="background:var(--q-mistake)"></i>Nf6<span class="mk" style="color:var(--q-mistake)">?</span></span>
+      <span class="chip tag-yours"><span class="glyph">&#9822;&#xFE0E;</span> you</span>
+      <span class="chip"><i class="dot" style="background:var(--q-good)"></i>Qe7</span>
+      <span class="chip"><i class="dot" style="background:var(--q-best)"></i>Nc6<span class="mk" style="color:var(--q-best)">&#9733;</span></span>
+    </div>
+
+    <h1>
+      <span class="line">Play chess.</span>
+      <span class="line soft">Get <span class="hl b"><span class="glyph">&#9822;&#xFE0E;</span>coached</span> on</span>
+      <span class="line soft">every move, by <span class="hl"><span class="ic">&#10022;</span>your AI</span>.</span>
+    </h1>
+
+    <p class="lede">A free, native chess app for your Mac. A built-in engine grades <strong>every move you make</strong>, from Best to Blunder. Plug in Claude, GPT, Gemini or a local model and it tells you <strong>why</strong>. Or play against it.</p>
+
+    <div class="cta-row">
+      <a class="btn big" href="#download">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 16h12"/></svg>
+        Download for Mac
+      </a>
+      <a class="btn big ghost" href="#try">Try a move first</a>
+    </div>
+    <div class="fine">Free &middot; macOS 14 or later &middot; Apple silicon &middot; 0.9 MB</div>
+
+    <div class="stage">
+      <span class="tag t1">g6 marked as a blunder</span>
+      <span class="tag t2">Evaluation bar</span>
+      <span class="tag t3">The coach says why</span>
+      <div class="window" id="win">
+        <div class="bar"><i></i><i></i><i></i><span>Chess</span></div>
+        <img src="/img/coach.jpg" width="1840" height="1280" alt="The Chess app: the move g6 is marked as a blunder in the move list, and the coach card says Nc6 was better.">
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="try">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">Try it here</div>
+      <h2>White just played Qh5. <span class="soft">What would you play?</span></h2>
+    </div>
+
+    <div class="try reveal">
+      <div class="board-wrap">
+        <div class="evalbar" aria-hidden="true"><i id="evalFill"></i></div>
+        <div class="board" id="board" role="img" aria-label="Chess position after 1. e4 e5 2. Qh5, Black to move">
+          <svg class="arrows" viewBox="0 0 8 8" aria-hidden="true">
+            <defs>
+              <marker id="hg" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="2.4" markerHeight="2.4" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="#5B8C3A"/></marker>
+              <marker id="hr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="2.4" markerHeight="2.4" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="#D64545"/></marker>
+            </defs>
+            <line id="arG" stroke="#5B8C3A" marker-end="url(#hg)"/>
+            <line id="arR" stroke="#D64545" marker-end="url(#hr)"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="panel">
+        <p class="q">Black to move.<small>Pick a reply. The verdicts below come from the app's own engine; the notes are what a coach would say.</small></p>
+        <div class="moves" id="moves">
+          <button data-m="g6">g6</button>
+          <button data-m="Nf6">Nf6</button>
+          <button data-m="Qe7">Qe7</button>
+          <button data-m="Nc6">Nc6</button>
+        </div>
+        <div class="card" id="card" aria-live="polite">
+          <div class="head"><i class="dot"></i><b>Coach</b></div>
+          <p class="note">Play a move and I will tell you how good it was.</p>
+        </div>
+        <div class="row">
+          <button class="linkbtn" id="hintBtn">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7.5 15h5M8 18h4M10 2a5.5 5.5 0 0 0-3.2 10c.5.4.7.9.7 1.5h5c0-.6.3-1.1.7-1.5A5.5 5.5 0 0 0 10 2z"/></svg>
+            Show a hint
+          </button>
+          <button class="linkbtn" id="resetBtn" hidden>Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="coach">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">The coach</div>
+      <h2>Every move gets a grade. <span class="soft">Bad ones get a reason.</span></h2>
+      <p class="sub">The grade is never a guess. It comes from how much winning chance your move gave away compared with the engine's best move.</p>
+      <div class="legend">
+        <span><i style="background:var(--q-best)"></i>Best <em style="color:var(--q-best)">&#9733;</em></span>
+        <span><i style="background:var(--q-best)"></i>Excellent <em style="color:var(--q-best)">!</em></span>
+        <span><i style="background:var(--q-good)"></i>Good</span>
+        <span><i style="background:var(--q-inacc)"></i>Inaccuracy <em style="color:var(--q-inacc)">?!</em></span>
+        <span><i style="background:var(--q-mistake)"></i>Mistake <em style="color:var(--q-mistake)">?</em></span>
+        <span><i style="background:var(--q-blunder)"></i>Blunder <em style="color:var(--q-blunder)">??</em></span>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="n">1</div>
+        <h3>The engine judges</h3>
+        <p>A built-in alpha-beta engine analyses every position in the background. When you move, it compares your move with its best one and grades it. No internet needed.</p>
+        <div class="big-glyph">&#9820;&#xFE0E;</div>
+      </div>
+      <div class="step reveal">
+        <div class="n">2</div>
+        <h3>Your AI explains</h3>
+        <p>Turn on <b>Explain with AI</b> and the model you chose gets the engine's verdict and better move, then explains it in two plain sentences. It explains; it never overrules the engine.</p>
+        <div class="big-glyph">&#9819;&#xFE0E;</div>
+      </div>
+      <div class="step reveal">
+        <div class="n">3</div>
+        <h3>Hints when stuck</h3>
+        <p>Press the lightbulb (or <b>&#8679;&#8984;H</b>) and an arrow shows the best move. The evaluation bar beside the board shows who is ahead, as you play.</p>
+        <div class="big-glyph">&#9822;&#xFE0E;</div>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:72px">
+      <div class="shot reveal"><img src="/img/hint.jpg" width="1840" height="1280" loading="lazy" alt="A hint arrow from b1 to c3 with the coach card saying Try Nc3."></div>
+      <div class="reveal">
+        <h2 style="font-size:clamp(28px,3.6vw,40px)">Click any move to see its review again.</h2>
+        <p class="sub">The move list keeps every mark, so after a game you can scroll back and find where it went wrong. Show better move draws the engine's choice on the board.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="models">
+  <div class="wrap split">
+    <div class="reveal">
+      <div class="eyebrow">Bring your own model</div>
+      <h2>Use the AI <span class="soft">you already like.</span></h2>
+      <p class="sub">Pick a provider in Settings, paste your key, press Test connection. Base URL and model are editable, so any proxy or gateway that speaks the Anthropic or OpenAI format works too.</p>
+      <div class="providers">
+        <span>Claude</span><span>OpenAI</span><span>Gemini</span><span>OpenRouter</span><span>Ollama on your Mac</span><span class="any">Any compatible proxy</span>
+      </div>
+      <ul class="checks">
+        <li><span><b>Your key stays in your Keychain.</b> It is never written to disk or logs.</span></li>
+        <li><span><b>Only the position and moves are sent.</b> Requests go straight from your Mac to your provider.</span></li>
+        <li><span><b>Optional.</b> Grades, hints and the evaluation bar work with no key at all.</span></li>
+      </ul>
+    </div>
+    <div class="shot tilt reveal"><img src="/img/settings.png" width="920" height="1060" loading="lazy" alt="The Settings window: coach toggles, provider picker, base URL, model, API key and Test connection."></div>
+  </div>
+</section>
+
+<section id="versus" style="padding-top:20px">
+  <div class="wrap">
+    <div class="versus reveal">
+      <div class="bgk">&#9818;&#xFE0E;</div>
+      <div>
+        <div class="eyebrow">Versus AI model</div>
+        <h2>Play against your <span class="soft">favourite model.</span></h2>
+        <p class="sub">Pick a model and a colour. The app sends it the position and the full list of legal moves. If it answers with an illegal move it gets two more tries; after that the engine plays that one move for it and tells you so.</p>
+        <p class="sub" style="font-size:15px">Prefer a classic opponent? The built-in computer has Easy, Medium and Hard levels, and two people can play on one Mac.</p>
+      </div>
+      <div class="chat" aria-label="How a turn against an AI model works">
+        <div class="bubble app">Position <code>rnbqkbnr/pppp1ppp/8/4p3/4P3/…</code><br>You play Black. Legal moves: <code>a6 a5 b6 … Nc6 Nf6 Qe7 …</code><br>End with <code>MOVE: &lt;san&gt;</code></div>
+        <div class="bubble model">Developing with tempo and defending e5.<br><b>MOVE: Nc6</b></div>
+        <div class="bubble sys">&#10003; <b>Legal.</b> Nc6 played on the board.</div>
+        <div class="bubble sys" style="margin-top:4px">An example of the format, not a recorded reply.</div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="reveal"><b>All the rules</b><span>Castling, en passant, promotion, fifty moves, threefold repetition.</span></div>
+      <div class="reveal"><b>Three ways to play</b><span>Two players, versus computer, versus AI model.</span></div>
+      <div class="reveal"><b>Native and tiny</b><span>SwiftUI, under 1 MB, light and dark mode.</span></div>
+      <div class="reveal"><b>Undo and flip</b><span>&#8984;Z takes a move back; &#8984;F turns the board.</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <div class="dl reveal">
+      <div>
+        <img class="icon" src="/img/icon-512.png" width="120" height="120" alt="">
+        <h2 style="margin-top:28px">Get Chess for Mac.</h2>
+        <p class="sub">Version 1.1.0. Free, no account, no tracking.</p>
+        <div class="cta-row" style="justify-content:flex-start">
+          <a class="btn big" href="/download/Chess-1.1.0.dmg" download>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 16h12"/></svg>
+            Download Chess-1.1.0.dmg
+          </a>
+        </div>
+        <div class="meta"><span><b>0.9 MB</b> disk image</span><span><b>macOS 14</b> or later</span><span><b>Apple silicon</b> (M1 and newer)</span></div>
+        <div class="sha">SHA-256 84ab51bfa587402324e4f4825b75cf22b9235f83f1d5cdd05f3285b5ea6aa1bc</div>
+      </div>
+      <div class="install">
+        <h3>Installing</h3>
+        <ol>
+          <li>Open the disk image and drag <b>Chess</b> into <b>Applications</b>.</li>
+          <li>The app is not notarised by Apple, so the first launch is blocked. Open <b>System Settings &rarr; Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</li>
+          <li>Or run this once in Terminal:<br><code id="xattr">xattr -dr com.apple.quarantine /Applications/Chess.app</code><button class="copy" data-copy="xattr">Copy</button></li>
+          <li>For AI features, open <b>Chess &rarr; Settings</b> (&#8984;,) and add a key. Everything else works without one.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <a class="brand" href="#"><img src="/img/icon-512.png" alt="">Chess</a>
+      <p style="max-width:300px;margin:14px 0 0">A chess coach that lives on your Mac. Made with Swift and SwiftUI.</p>
+    </div>
+    <div class="cols">
+      <div><h4>App</h4><ul><li><a href="#try">Try a move</a></li><li><a href="#coach">The coach</a></li><li><a href="#download">Download</a></li></ul></div>
+      <div><h4>AI</h4><ul><li><a href="#models">Bring your own model</a></li><li><a href="#versus">Versus AI model</a></li></ul></div>
+    </div>
+  </div>
+  <div class="wrap" style="margin-top:40px;font-size:13px;color:var(--faint)">&copy; 2026. Not affiliated with Anthropic, OpenAI, Google, OpenRouter or Ollama. Model names belong to their owners.</div>
+  <div class="wordmark" aria-hidden="true"><span class="glyph">&#9822;&#xFE0E;</span>chess</div>
+</footer>
+
+<script>
+(() => {
+  // nav border
+  const nav = document.getElementById('nav');
+  const win = document.getElementById('win');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const onScroll = () => {
+    nav.classList.toggle('scrolled', scrollY > 8);
+    if (!reduce && win) {
+      const r = win.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, 1 - (r.top - innerHeight * .25) / (innerHeight * .6)));
+      win.style.setProperty('--tilt', (14 * (1 - p)).toFixed(2) + 'deg');
+    }
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // reveal on scroll
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .12 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // copy buttons
+  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(document.getElementById(b.dataset.copy).textContent); b.textContent = 'Copied'; }
+    catch { b.textContent = 'Select it'; }
+    setTimeout(() => b.textContent = 'Copy', 1600);
+  }));
+
+  // mini board: position after 1. e4 e5 2. Qh5, Black to move
+  const START = {
+    a8:'br', b8:'bn', c8:'bb', d8:'bq', e8:'bk', f8:'bb', g8:'bn', h8:'br',
+    a7:'bp', b7:'bp', c7:'bp', d7:'bp', f7:'bp', g7:'bp', h7:'bp',
+    e5:'bp', h5:'wq', e4:'wp',
+    a2:'wp', b2:'wp', c2:'wp', d2:'wp', f2:'wp', g2:'wp', h2:'wp',
+    a1:'wr', b1:'wn', c1:'wb', e1:'wk', f1:'wb', g1:'wn', h1:'wr'
+  };
+  const SOLID = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
+  const OUT = { k:'♔', q:'♕', r:'♖', b:'♗', n:'♘', p:'♙' };
+  const VS = '︎';
+  const board = document.getElementById('board');
+  const files = 'abcdefgh';
+  const col = s => files.indexOf(s[0]), row = s => 8 - +s[1];
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const sq = document.createElement('div');
+    const name = files[c] + (8 - r);
+    sq.className = 'sq' + ((r + c) % 2 === 0 ? ' l' : '');
+    sq.dataset.s = name;
+    if (c === 0) sq.insertAdjacentHTML('beforeend', `<span class="c r">${8 - r}</span>`);
+    if (r === 7) sq.insertAdjacentHTML('beforeend', `<span class="c f">${files[c]}</span>`);
+    board.appendChild(sq);
+  }
+  const pieces = {};
+  const place = (el, s) => el.style.transform = `translate(${col(s) * 100}%, ${row(s) * 100}%)`;
+  function build() {
+    board.querySelectorAll('.pc').forEach(p => p.remove());
+    for (const k in pieces) delete pieces[k];
+    for (const [s, p] of Object.entries(START)) {
+      const el = document.createElement('div');
+      el.className = 'pc';
+      const white = p[0] === 'w', kind = p[1];
+      el.innerHTML = white
+        ? `<span class="fill w">${SOLID[kind]}${VS}</span><span class="out">${OUT[kind]}${VS}</span>`
+        : `<span class="fill b">${SOLID[kind]}${VS}</span>`;
+      place(el, s);
+      board.appendChild(el);
+      pieces[s] = el;
+    }
+  }
+  const setHL = (a, b) => board.querySelectorAll('.sq').forEach(q => q.classList.toggle('hl1', q.dataset.s === a || q.dataset.s === b));
+  const arrow = (id, from, to) => {
+    const l = document.getElementById(id);
+    if (!from) { l.classList.remove('show'); return; }
+    const x1 = col(from) + .5, y1 = row(from) + .5, x2 = col(to) + .5, y2 = row(to) + .5;
+    const len = Math.hypot(x2 - x1, y2 - y1), k = (len - .32) / len;
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x1 + (x2 - x1) * k); l.setAttribute('y2', y1 + (y2 - y1) * k);
+    requestAnimationFrame(() => l.classList.add('show'));
+  };
+  // White's win chance from centipawns, the same curve the app uses.
+  const winChance = cp => 0.5 + 0.5 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
+  const evalFill = document.getElementById('evalFill');
+  const setEval = cp => evalFill.style.height = (Math.min(.95, Math.max(.05, winChance(cp))) * 100) + '%';
+
+  // Verdicts and evaluations from the app's engine (depth 7) for this position.
+  const MOVES = {
+    Nc6: { from:'b8', to:'c6', q:'Best', c:'var(--q-best)', mk:'★', cp:-30, summary:'Best move.',
+           note:'Develops a knight and <b>guards e5</b>. Nothing is left hanging.' },
+    Qe7: { from:'d8', to:'e7', q:'Good', c:'var(--q-good)', mk:'', cp:0, summary:'Good move.',
+           note:'Also guards e5, but the queen now <b>blocks the bishop on f8</b>.' },
+    Nf6: { from:'g8', to:'f6', q:'Mistake', c:'var(--q-mistake)', mk:'?', cp:80, summary:'Mistake. Nc6 was better.',
+           note:'It attacks the queen but forgets e5: <b>Qxe5+</b> wins a pawn with check.', refute:['h5','e5'] },
+    g6:  { from:'g7', to:'g6', q:'Blunder', c:'var(--q-blunder)', mk:'??', cp:550, summary:'Blunder. Nc6 was better.',
+           note:'It chases the queen, but <b>Qxe5+</b> forks the king and the rook on h8.', refute:['h5','e5'] },
+  };
+  const card = document.getElementById('card');
+  const resetBtn = document.getElementById('resetBtn');
+  const fmt = cp => cp === 0 ? '0.0' : (cp > 0 ? '+' : '−') + (Math.abs(cp) / 100).toFixed(1);
+  let timer;
+
+  function reset() {
+    clearTimeout(timer); build(); setHL(); arrow('arG'); arrow('arR'); setEval(-50);
+    document.querySelectorAll('#moves button').forEach(b => b.classList.remove('on'));
+    card.innerHTML = '<div class="head"><i class="dot"></i><b>Coach</b><span class="ev">' + fmt(-50) + '</span></div><p class="note">Play a move and I will tell you how good it was.</p>';
+    resetBtn.hidden = true;
+  }
+  function play(name) {
+    reset();
+    const m = MOVES[name];
+    document.querySelector(`#moves [data-m="${name}"]`).classList.add('on');
+    const el = pieces[m.from]; place(el, m.to); setHL(m.from, m.to);
+    card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
+    card.innerHTML = `<div class="head"><i class="dot" style="background:${m.c}"></i><b>${m.q}</b><span class="mv">2… ${name}<span style="color:${m.c};font-weight:700">${m.mk}</span></span><span class="ev">${fmt(m.cp)}</span></div>
+      <p>${m.summary}</p><p class="note">${m.note}</p>`;
+    setEval(m.cp);
+    if (m.refute) timer = setTimeout(() => arrow('arR', ...m.refute), 650);
+    if (m.q !== 'Best') setTimeout(() => arrow('arG', 'b8', 'c6'), m.refute ? 1300 : 650);
+    resetBtn.hidden = false;
+  }
+  document.querySelectorAll('#moves button').forEach(b => b.addEventListener('click', () => play(b.dataset.m)));
+  document.getElementById('hintBtn').addEventListener('click', () => {
+    reset();
+    arrow('arG', 'b8', 'c6');
+    card.innerHTML = '<div class="head"><i class="dot" style="background:var(--q-best)"></i><b>Hint</b></div><p>Try Nc6.</p><p class="note">Look at the pawn on e5. Who attacks it, and who defends it?</p>';
+    resetBtn.hidden = false;
+  });
+  resetBtn.addEventListener('click', reset);
+  reset();
+})();
+</script>
+</body>
+</html>
