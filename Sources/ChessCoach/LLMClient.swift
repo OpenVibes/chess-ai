@@ -169,6 +169,58 @@ public struct LLMClient: Sendable {
         return text
     }
 
+    /// The model ids the server offers, sorted. Anthropic: `GET {baseURL}/v1/models`;
+    /// OpenAI-compatible (OpenAI, Gemini, OpenRouter, Ollama…): `GET {baseURL}/models`.
+    public func listModels() async throws -> [String] {
+        let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasKey = !(key ?? "").isEmpty
+        if config.requiresKey && !hasKey { throw LLMError.missingKey }
+
+        var base = config.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        let path = config.kind == .anthropic ? "/v1/models?limit=1000" : "/models"
+        guard let url = URL(string: base + path), let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https", let host = url.host, !host.isEmpty else {
+            throw LLMError.badURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 20
+        switch config.kind {
+        case .anthropic:
+            if hasKey { request.setValue(key, forHTTPHeaderField: "x-api-key") }
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        case .openAICompatible:
+            if hasKey, let key { request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization") }
+        }
+
+        let data: Data, response: HTTPURLResponse
+        do {
+            (data, response) = try await transport.send(request)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as LLMError {
+            throw error
+        } catch {
+            throw LLMError.network(redact((error as? URLError)?.localizedDescription ?? error.localizedDescription, key))
+        }
+        switch response.statusCode {
+        case 200..<300: break
+        case 401, 403: throw LLMError.unauthorized
+        case 429: throw LLMError.rateLimited
+        default: throw LLMError.http(response.statusCode, redact(Self.errorMessage(from: data), key))
+        }
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw LLMError.http(response.statusCode, "The reply was not understood.")
+        }
+        // Both formats put the list in `data`; Gemini's OpenAI endpoint prefixes ids with "models/".
+        let entries = json["data"] as? [[String: Any]] ?? []
+        let ids = entries.compactMap { $0["id"] as? String }.map { id -> String in
+            id.hasPrefix("models/") ? String(id.dropFirst("models/".count)) : id
+        }
+        return Array(Set(ids)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
     private func redact(_ text: String, _ key: String?) -> String {
         guard let key, !key.isEmpty else { return text }
         return text.replacingOccurrences(of: key, with: "…")
