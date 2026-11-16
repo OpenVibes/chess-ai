@@ -26,7 +26,7 @@ CHESS_NEWGAME_SNAPSHOT=/abs/sheet.png CHESS_VS=model .build/debug/ChessApp   # r
 - Square index: 0 = a1, 7 = h1, 63 = h8.
 - Design values (colours, sizes, copy) come from `docs/SPEC.md` "Design". Do not invent UI.
 - Do not commit; the orchestrator commits after review. Update `filemap.md` when you add or move files.
-- This folder's parent (`pc-controller`) is unrelated. Never touch files outside `chess/`, and nothing here runs over SSH.
+- Never touch files outside this repository.
 
 ## Pointers
 
