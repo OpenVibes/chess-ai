@@ -365,6 +365,15 @@ final class CoachModel {
         }
     }
 
+    /// The review of a ply, waiting up to `timeout` seconds while it is still being worked out.
+    func review(forPly ply: Int, timeout: Double) async -> MoveReview? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while reviews[ply] == nil, reviewWork[ply] != nil, Date() < deadline {
+            try? await Task.sleep(nanoseconds: 30_000_000)
+        }
+        return reviews[ply]
+    }
+
     // MARK: AI explanations
 
     private func makeClient() -> LLMClient {

@@ -77,6 +77,8 @@ struct ArrowShape: Shape {
 
 struct CoachCard: View {
     let model: GameModel
+    /// Fills the space it is given (the Coach tab) instead of the fixed 132 pt card.
+    var flexible = false
 
     private enum Content {
         case empty
@@ -103,7 +105,7 @@ struct CoachCard: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .frame(height: 132)
+        .frame(minHeight: 132, idealHeight: 132, maxHeight: flexible ? .infinity : 132)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
     }
 

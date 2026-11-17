@@ -95,6 +95,8 @@ final class CoachSettings {
     var evalBarEnabled: Bool { didSet { changed() } }
     var hintsEnabled: Bool { didSet { changed() } }
     var aiExplanations: Bool { didSet { changed() } }
+    /// Versus AI model: the opponent chats and teases with each move.
+    var chatEnabled: Bool { didSet { changed() } }
     var modelConfig: ModelConfig { didSet { changed() } }
     var selectedPresetID: String { didSet { changed() } }
     /// Bumped whenever a key is saved so views re-evaluate `isModelUsable`.
@@ -111,6 +113,7 @@ final class CoachSettings {
         static let bar = "evalBarEnabled"
         static let hints = "hintsEnabled"
         static let ai = "aiExplanations"
+        static let chat = "chatEnabled"
         static let config = "modelConfig"
         static let preset = "selectedPresetID"
     }
@@ -125,6 +128,7 @@ final class CoachSettings {
         evalBarEnabled = bool(Key.bar, true)
         hintsEnabled = bool(Key.hints, true)
         aiExplanations = bool(Key.ai, false)
+        chatEnabled = bool(Key.chat, true)
         if let data = defaults.data(forKey: Key.config),
            let config = try? JSONDecoder().decode(ModelConfig.self, from: data) {
             modelConfig = config
@@ -154,6 +158,7 @@ final class CoachSettings {
         defaults.set(evalBarEnabled, forKey: Key.bar)
         defaults.set(hintsEnabled, forKey: Key.hints)
         defaults.set(aiExplanations, forKey: Key.ai)
+        defaults.set(chatEnabled, forKey: Key.chat)
         if let data = try? JSONEncoder().encode(modelConfig) { defaults.set(data, forKey: Key.config) }
         defaults.set(selectedPresetID, forKey: Key.preset)
         onChange?(oldCoach != nil && oldCoach != coachEnabled)

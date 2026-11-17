@@ -19,7 +19,8 @@
 - `Sources/ChessApp/GameModel.swift` — @Observable GameModel: game, mode, selection, promotion, undo, identity-tracked pieces for animation, owns `coach`, computer and model opponents (`positionDidChange()` starts/cancels an off-main-thread `Engine.bestMove` search or an `LLMClient` move request with retries and engine fallback, generation counter, 0.4 s minimum think time; `opponentMessage`, `hasNonHumanOpponent`)
 - `Sources/ChessApp/BoardView.swift` — board squares, coordinates, highlights, pieces, arrow overlay (above pieces), click and drag gesture, promotion popover anchor
 - `Sources/ChessApp/PieceGlyph.swift` — Palette colours and the Unicode glyph piece view
-- `Sources/ChessApp/SidebarView.swift` — player strips, status line, move list (quality marks, click-to-inspect), coach card, button row
+- `Sources/ChessApp/SidebarView.swift` — player strips (avatar, turn badge, active highlight), status line, move list (quality marks, click-to-inspect), Chat/Coach tabs versus a model, coach card, button row
+- `Sources/ChessApp/ChatViews.swift` — `PlayerAvatar` (mood emoji for the model, colour dot), `TurnBadge`, `TypingDots`, `ChatPanel` (bubbles, move chips with verdicts, typing indicator, opponent errors, input), `BubbleShape`
 - `Sources/ChessApp/CoachSettings.swift` — `CoachSettings` (@Observable, persisted to an injectable UserDefaults), `KeyStore` protocol with `KeychainKeyStore` (SecItem, service `local.chess.app`, account = base URL host) and `InMemoryKeyStore`, `NoNetworkTransport`, "usable model" logic
 - `Sources/ChessApp/CoachModel.swift` — `CoachModel` (owned by `GameModel.coach`): background analysis with a position cache and refcounted cancellable jobs, reviews per ply, AI explanation state, hint and arrow
 - `Sources/ChessApp/CoachViews.swift` — `EvalBar`, `ArrowShape`, `CoachCard`, quality colours
@@ -30,6 +31,7 @@
 - `Sources/ChessCoach/Review.swift` — `MoveQuality` and `MoveReview` and `Coach` (win chance, classify, review, format); `MoveReview.summary` copy
 - `Sources/ChessCoach/LLMClient.swift` — ProviderKind, ModelConfig, ProviderPreset, ChatMessage, LLMError, LLMTransport, URLSessionTransport, LLMClient (Anthropic and OpenAI-compatible wire formats)
 - `Sources/ChessCoach/CoachPrompts.swift` — coach and opponent prompts
+- `Sources/ChessCoach/Banter.swift` — `OpponentMood`, `ChatLine`, `BanterContext`, `Banter` (cheeky-opponent prompts for moves and chat replies, `SAY:`/`MOOD:` parser)
 - `Sources/ChessCoach/MoveParser.swift` — finds a legal move in free-text model replies (SAN or UCI)
 - `Tests/ChessCoachTests/LLMClientTests.swift` — stub-transport tests for both wire formats, status mapping, errors
 - `Tests/ChessCoachTests/CoachTests.swift` — Coach win chance, thresholds, review, summary copy, format, end-to-end blunders
@@ -44,6 +46,8 @@
 - `Tests/ChessEngineTests/AnalysisTests.swift` — Engine.analyse tests (mates both colours, hanging queen, checkmate/stalemate, PV legality, timing, shouldStop, determinism)
 - `Tests/ChessAppTests/CoachModelTests.swift` — coach tests with a counting stub `LLMTransport`, in-memory keys and short analysis limits: reviews and marks, undo, hint, AI states, settings round trip, usable model
 - `Tests/ChessAppTests/ModelOpponentTests.swift` — Versus AI model tests with a queued stub `LLMTransport`: play, retry, engine fallback with notice, 401 and try again, engine move, undo and new game cancel, human as Black
+- `Tests/ChessCoachTests/BanterTests.swift` — banter parser and prompt tests
+- `Tests/ChessAppTests/ChatTests.swift` — chat timeline, mood, replies, chat off, undo and new game
 - `Tests/ChessAppTests/GameModelTests.swift` — GameModel tests: selection, promotion, piece identity, undo, game over, versus-computer flow (`@testable import ChessApp`)
 - `build.sh`, `make-icon.py` — app bundle and icon (task 7)
 - `website/` — product site (static HTML) deployed to Vercel project `chess-for-mac`; `website/publish.sh` copies the DMG from `dist/` and deploys. Live at https://chess-for-mac.vercel.app

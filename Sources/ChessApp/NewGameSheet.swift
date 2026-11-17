@@ -103,6 +103,9 @@ struct NewGameSheet: View {
             }
             modelListStatus
         }
+        Toggle("Chat with \(settings.modelConfig.model.isEmpty ? "the model" : settings.modelConfig.model)", isOn: $settings.chatEnabled)
+            .toggleStyle(.checkbox)
+        note("It comments on your moves and teases you as you play, and you can write back. Its comments come with its moves, so they add no extra requests.")
         if !settings.isModelUsable {
             HStack(spacing: 8) {
                 Text(settings.modelConfig.baseURL.isEmpty || settings.modelConfig.model.isEmpty

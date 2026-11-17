@@ -5,16 +5,35 @@ import ChessCoach
 struct SidebarView: View {
     let model: GameModel
 
+    enum Panel: Hashable { case chat, coach }
+    @State private var panel: Panel = .chat
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             PlayerStrip(model: model, color: model.topColor)
             Text(model.statusText)
                 .font(.system(size: 15, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .minimumScaleFactor(0.8)
-            MoveList(model: model)
-            if model.coach.enabled || model.opponentMessage != nil { CoachCard(model: model) }
+            if model.chatActive {
+                MoveList(model: model)
+                    .frame(height: 96)
+                Picker("Panel", selection: $panel) {
+                    Text("Chat").tag(Panel.chat)
+                    Text("Coach").tag(Panel.coach)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                if panel == .chat {
+                    ChatPanel(model: model)
+                } else {
+                    CoachCard(model: model, flexible: true)
+                }
+            } else {
+                MoveList(model: model)
+                if model.coach.enabled || model.opponentMessage != nil { CoachCard(model: model) }
+            }
             PlayerStrip(model: model, color: model.bottomColor)
             HStack(spacing: 8) {
                 Button { model.showingNewGame = true } label: {
@@ -31,15 +50,25 @@ struct SidebarView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(16)
-        .frame(width: 280)
+        .frame(width: model.chatActive ? 320 : 280)
         .frame(maxHeight: .infinity)
         .background(Color(nsColor: .controlBackgroundColor))
+        // A hint is shown in the coach panel, so switch to it.
+        .onChange(of: model.coach.hint != nil) { _, shown in if shown { panel = .coach } }
     }
 }
 
 private struct PlayerStrip: View {
     let model: GameModel
     let color: PieceColor
+
+    private var active: Bool { !model.isGameOver && model.sideToMove == color }
+    private var isComputer: Bool { model.mode == .versusComputer && color != model.humanColor }
+    private var name: String { isComputer ? "Computer" : model.playerName(color) }
+    private var subtitle: String {
+        let plays = color == .white ? "Plays White" : "Plays Black"
+        return isComputer ? "\(model.difficulty.rawValue.capitalized) · \(plays)" : plays
+    }
 
     private static func solidGlyph(_ kind: PieceKind) -> String {
         switch kind {
@@ -54,31 +83,46 @@ private struct PlayerStrip: View {
 
     var body: some View {
         let lead = model.lead(color)
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(model.playerName(color))
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 8)
-                if lead > 0 {
-                    Text("+\(lead)")
-                        .font(.system(size: 13, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            PlayerAvatar(model: model, color: color, size: 34)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 4)
+                    TurnBadge(model: model, color: color)
+                    if lead > 0 {
+                        Text("+\(lead)")
+                            .font(.system(size: 12, weight: .medium).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
-            }
-            HStack(spacing: -4) {
-                ForEach(Array(model.capturedPieces(by: color).enumerated()), id: \.offset) { _, p in
-                    Text(Self.solidGlyph(p.kind) + "\u{FE0E}")
-                        .font(.custom("Apple Symbols", size: 16))
-                        .foregroundStyle(.secondary)
-                        .fixedSize()
-                        .frame(width: 14, height: 18)
+                HStack(spacing: -4) {
+                    ForEach(Array(model.capturedPieces(by: color).enumerated()), id: \.offset) { _, p in
+                        Text(Self.solidGlyph(p.kind) + "\u{FE0E}")
+                            .font(.custom("Apple Symbols", size: 16))
+                            .foregroundStyle(.secondary)
+                            .fixedSize()
+                            .frame(width: 14, height: 18)
+                    }
+                    if model.capturedPieces(by: color).isEmpty {
+                        Text(subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .frame(height: 18)
             }
-            .frame(height: 18)
         }
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: 10)
+            .fill(active ? Color.accentColor.opacity(0.12) : Color.clear))
+        .overlay(RoundedRectangle(cornerRadius: 10)
+            .strokeBorder(Color.accentColor.opacity(active ? 0.55 : 0), lineWidth: 1.5))
+        .animation(.easeOut(duration: 0.2), value: active)
     }
 }
 

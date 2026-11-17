@@ -124,6 +124,16 @@ extension GameModel {
             model.perform(Move(from: from, to: to, promotion: promo))
         }
         if anySnapshot { model.coach.endReplay(reviewLast: demo) }
+        if env["CHESS_CHAT_DEMO"] == "1", model.chatActive, model.game.history.count >= 2 {
+            let n = model.game.history.count
+            model.seedChat([
+                .opponent(text: "Bold opening. I've seen worse \u{1F60F}", move: model.moveLabel(ply: n - 2)),
+                .human("you're going down"),
+                .opponent(text: "Big words for someone whose bishop is about to get lonely.", move: nil),
+                .humanMove(ply: n - 1, label: model.moveLabel(ply: n - 1)),
+                .opponent(text: "Okay okay, that was actually good. Don't let it go to your head.", move: nil),
+            ], mood: .impressed)
+        }
         if env["CHESS_HINT"] == "1" { model.requestHint() }
         if let s = env["CHESS_SELECT"], let sq = Square(s) { model.selected = sq }
         if env["CHESS_FLIP"] == "1" { model.flipBoard() }

@@ -12,9 +12,25 @@ enum OpponentMessage: Equatable {
     case error(String)
 }
 
+/// One entry in the Versus AI model chat.
+struct ChatEntry: Identifiable, Equatable {
+    enum Kind: Equatable {
+        /// The human's move, shown as a small chip with the coach's verdict next to it.
+        case humanMove(ply: Int, label: String)
+        /// Something the opponent said; `move` is the move it played with it, if any.
+        case opponent(text: String, move: String?)
+        /// The opponent moved without saying anything.
+        case opponentMove(label: String)
+        case human(String)
+        case note(String)
+    }
+    let id: Int
+    let kind: Kind
+}
+
 /// Result of asking the model for a move.
 private enum ModelTurnOutcome: Sendable {
-    case move(Move)
+    case move(Move, reply: String)
     case noLegalMove
     case failed(String)
 }
@@ -75,6 +91,14 @@ final class GameModel {
 
     /// Fallback notice or error from the model opponent, shown in the coach card as "Opponent".
     private(set) var opponentMessage: OpponentMessage?
+
+    /// Versus AI model chat: the timeline, the opponent's current mood, and replies still being written.
+    private(set) var chat: [ChatEntry] = []
+    private(set) var mood: OpponentMood = .neutral
+    private(set) var chatPending = 0
+    @ObservationIgnored private var nextChatID = 0
+    @ObservationIgnored private var chatEpoch = 0
+    @ObservationIgnored private var chatTasks: [Int: Task<Void, Never>] = [:]
 
     /// Pieces with stable ids; one snapshot per position so undo restores identities.
     private var pieceStack: [[PieceItem]]
@@ -162,6 +186,19 @@ final class GameModel {
         }
     }
 
+    /// The chat panel and banter are on: versus a model, with chat switched on.
+    var chatActive: Bool { mode == .versusModel && coach.settings.chatEnabled }
+
+    /// Whose turn it is, from the human's side: nil in two-player games and when the game is over.
+    var isHumansTurn: Bool { hasNonHumanOpponent && !isGameOver && sideToMove == humanColor }
+
+    /// "15. d4" or "15… O-O" for a ply in the history.
+    func moveLabel(ply: Int) -> String {
+        let record = game.history[ply]
+        let n = record.positionBefore.fullmoveNumber
+        return record.positionBefore.sideToMove == .white ? "\(n). \(record.san)" : "\(n)\u{2026} \(record.san)"
+    }
+
     /// The opponent model's name for the strip and status line.
     var modelName: String {
         let name = coach.settings.modelConfig.model.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -193,9 +230,14 @@ final class GameModel {
 
     var statusText: String {
         if let resultText { return resultText }
-        if isThinking { return mode == .versusModel ? "\(modelName) is thinking…" : "Computer is thinking…" }
-        if game.position.isInCheck { return "Check" }
-        return sideToMove == .white ? "White to move" : "Black to move"
+        let check = game.position.isInCheck
+        if hasNonHumanOpponent {
+            if sideToMove == humanColor { return check ? "Check! Your move" : "Your move" }
+            let name = mode == .versusModel ? modelName : "Computer"
+            return isThinking ? "\(name) is thinking…" : "\(name) to move"
+        }
+        let side = sideToMove == .white ? "White" : "Black"
+        return check ? "Check! \(side) to move" : "\(side) to move"
     }
 
     // MARK: Actions
@@ -252,6 +294,7 @@ final class GameModel {
         } while hasNonHumanOpponent && sideToMove != humanColor && !game.history.isEmpty
         gameOverDismissed = false
         coach.didUndo()
+        if chatActive, !chat.isEmpty { addChat(.note("You took back a move.")) }
         positionDidChange()
     }
 
@@ -268,6 +311,7 @@ final class GameModel {
         gameOverDismissed = false
         whiteAtBottom = (mode != .twoPlayers) ? (humanColor == .white) : true
         coach.reset()
+        resetChat()
         positionDidChange()
     }
 
@@ -300,6 +344,9 @@ final class GameModel {
         selected = nil
         gameOverDismissed = false
         coach.didPlay(byHuman: byHuman)
+        if chatActive, byHuman, hasNonHumanOpponent {
+            addChat(.humanMove(ply: game.history.count - 1, label: moveLabel(ply: game.history.count - 1)))
+        }
         positionDidChange()
         return true
     }
@@ -378,22 +425,33 @@ final class GameModel {
         searchFlag = flag
         isThinking = true
         opponentMessage = nil
-        let snapshot = game
         let client = LLMClient(config: coach.settings.modelConfig, apiKey: coach.settings.currentKey(),
                                transport: coach.transport)
         let name = modelName
         let minimum = minimumThinkTime
+        let banter = chatActive
         searchTask = Task { @MainActor [weak self] in
             let started = ContinuousClock.now
-            let outcome = await Self.askModel(client, game: snapshot)
-            guard let self, generation == self.searchGeneration, !flag.isCancelled else { return }
+            guard let self else { return }
+            // Give the coach a moment to judge the human's move, so the opponent can react to it.
+            var context: BanterContext?
+            if banter {
+                if self.coach.enabled, let ply = self.lastHumanPly {
+                    _ = await self.coach.review(forPly: ply, timeout: 3)
+                    guard generation == self.searchGeneration, !flag.isCancelled else { return }
+                }
+                context = self.banterContext()
+            }
+            let snapshot = self.game
+            let outcome = await Self.askModel(client, game: snapshot, banter: context)
+            guard generation == self.searchGeneration, !flag.isCancelled else { return }
             switch outcome {
             case .failed(let message):
                 self.searchFlag = nil
                 self.searchTask = nil
                 self.isThinking = false
                 self.opponentMessage = .error(message)
-            case .move(let move):
+            case .move(let move, let reply):
                 let wait = Duration.seconds(minimum) - started.duration(to: .now)
                 if wait > .zero {
                     try? await Task.sleep(for: wait)
@@ -402,7 +460,16 @@ final class GameModel {
                 self.searchFlag = nil
                 self.searchTask = nil
                 self.isThinking = false
-                self.perform(move)
+                if self.perform(move), banter {
+                    let label = self.moveLabel(ply: self.game.history.count - 1)
+                    let said = Banter.parse(reply)
+                    if let mood = said.mood { self.mood = mood }
+                    if let text = said.say {
+                        self.addChat(.opponent(text: text, move: label))
+                    } else {
+                        self.addChat(.opponentMove(label: label))
+                    }
+                }
             case .noLegalMove:
                 self.searchFlag = nil
                 self.searchTask = nil
@@ -414,13 +481,15 @@ final class GameModel {
     }
 
     /// One request plus at most two retries. Never judges the move: `MoveParser` and `Position` decide legality.
-    private nonisolated static func askModel(_ client: LLMClient, game: Game) async -> ModelTurnOutcome {
-        var messages = [ChatMessage(role: .user, content: CoachPrompts.opponentTurn(game: game))]
+    private nonisolated static func askModel(_ client: LLMClient, game: Game, banter: BanterContext?) async -> ModelTurnOutcome {
+        let system = banter.map { Banter.opponentSystem(name: $0.name) } ?? CoachPrompts.opponentSystem
+        let first = banter.map { Banter.opponentTurn(game: game, context: $0) } ?? CoachPrompts.opponentTurn(game: game)
+        var messages = [ChatMessage(role: .user, content: first)]
         let legalSAN = game.position.legalMoves().map { game.position.san(for: $0) }
         for attempt in 0..<3 {
             do {
-                let reply = try await client.complete(system: CoachPrompts.opponentSystem, messages: messages, maxTokens: 4000)
-                if let move = MoveParser.parse(reply, in: game.position) { return .move(move) }
+                let reply = try await client.complete(system: system, messages: messages, maxTokens: 4000)
+                if let move = MoveParser.parse(reply, in: game.position) { return .move(move, reply: reply) }
                 if attempt < 2 {
                     messages.append(ChatMessage(role: .assistant, content: reply))
                     messages.append(ChatMessage(role: .user, content: CoachPrompts.opponentRetry(rejected: reply, legalSAN: legalSAN)))
@@ -432,5 +501,95 @@ final class GameModel {
             }
         }
         return .noLegalMove
+    }
+
+    // MARK: Chat
+
+    /// The human's latest move, if any.
+    private var lastHumanPly: Int? {
+        game.history.indices.last { game.history[$0].positionBefore.sideToMove == humanColor }
+    }
+
+    private func banterContext() -> BanterContext {
+        var context = BanterContext(name: modelName)
+        if let ply = lastHumanPly {
+            context.lastHumanMove = moveLabel(ply: ply)
+            if let review = coach.reviews[ply] {
+                context.verdict = review.quality
+                if review.bestSAN != review.san { context.betterSAN = review.bestSAN }
+            }
+        }
+        context.chat = chat.compactMap { entry in
+            switch entry.kind {
+            case .human(let text): return ChatLine(speaker: .human, text: text)
+            case .opponent(let text, _): return ChatLine(speaker: .opponent, text: text)
+            case .note(let text): return ChatLine(speaker: .note, text: text)
+            case .humanMove, .opponentMove: return nil
+            }
+        }
+        return context
+    }
+
+    /// Snapshot and test runs: fills the chat without asking a model.
+    func seedChat(_ kinds: [ChatEntry.Kind], mood: OpponentMood) {
+        kinds.forEach(addChat)
+        self.mood = mood
+    }
+
+    private func addChat(_ kind: ChatEntry.Kind) {
+        chat.append(ChatEntry(id: nextChatID, kind: kind))
+        nextChatID += 1
+    }
+
+    private func resetChat() {
+        chatEpoch += 1
+        chatTasks.values.forEach { $0.cancel() }
+        chatTasks = [:]
+        chatPending = 0
+        chat = []
+        mood = .neutral
+        if chatActive {
+            addChat(.note("New game. You play \(humanColor == .white ? "White" : "Black") against \(modelName)."))
+        }
+    }
+
+    /// The human writes in the chat; the opponent answers with one short line.
+    func sendChat(_ text: String) {
+        let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard chatActive, !message.isEmpty else { return }
+        let context = banterContext()
+        addChat(.human(message))
+        guard coach.settings.isModelUsable else {
+            addChat(.note("Set up a model in Settings so \(modelName) can answer."))
+            return
+        }
+        let client = LLMClient(config: coach.settings.modelConfig, apiKey: coach.settings.currentKey(),
+                               transport: coach.transport)
+        let system = Banter.chatSystem(name: context.name)
+        let prompt = Banter.chatTurn(game: game, you: humanColor.opposite, context: context, message: message)
+        let epoch = chatEpoch
+        let id = nextChatID
+        chatPending += 1
+        chatTasks[id] = Task { @MainActor [weak self] in
+            let result: Result<String, Error>
+            do {
+                result = .success(try await client.complete(system: system,
+                                                            messages: [ChatMessage(role: .user, content: prompt)],
+                                                            maxTokens: 2000))
+            } catch {
+                result = .failure(error)
+            }
+            guard let self, epoch == self.chatEpoch, !Task.isCancelled else { return }
+            self.chatTasks[id] = nil
+            self.chatPending = max(0, self.chatPending - 1)
+            switch result {
+            case .success(let reply):
+                let said = Banter.parse(reply)
+                if let mood = said.mood { self.mood = mood }
+                self.addChat(.opponent(text: said.say ?? "\u{2026}", move: nil))
+            case .failure(let error):
+                self.addChat(.note("\(self.modelName) could not answer: \(error.localizedDescription)"))
+            }
+        }
     }
 }
