@@ -103,6 +103,14 @@ struct NewGameSheet: View {
             }
             modelListStatus
         }
+        labeled("Thinking") {
+            Picker("Thinking", selection: $settings.opponentThinking) {
+                ForEach(ThinkingLevel.allCases, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            note("\(settings.opponentThinking.summary) You can change it during the game.")
+        }
         Toggle("Chat with \(settings.modelConfig.model.isEmpty ? "the model" : settings.modelConfig.model)", isOn: $settings.chatEnabled)
             .toggleStyle(.checkbox)
         note("It comments on your moves and teases you as you play, and you can write back. Its comments come with its moves, so they add no extra requests.")

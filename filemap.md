@@ -29,8 +29,9 @@
 - `Sources/ChessApp/PromotionPicker.swift` — promotion popover content
 - `Sources/ChessApp/GameOverCard.swift` — result card over the board
 - `Sources/ChessCoach/Review.swift` — `MoveQuality` and `MoveReview` and `Coach` (win chance, classify, review, format); `MoveReview.summary` copy
-- `Sources/ChessCoach/LLMClient.swift` — ProviderKind, ModelConfig, ProviderPreset, ChatMessage, LLMError, LLMTransport, URLSessionTransport, LLMClient (Anthropic and OpenAI-compatible wire formats)
+- `Sources/ChessCoach/LLMClient.swift` — ProviderKind, ModelConfig, ProviderPreset, ChatMessage, LLMError, LLMTransport, URLSessionTransport, LLMClient (Anthropic and OpenAI-compatible wire formats, `listModels`, reasoning effort per `ThinkingLevel`)
 - `Sources/ChessCoach/CoachPrompts.swift` — coach and opponent prompts
+- `Sources/ChessCoach/Thinking.swift` — `ThinkingLevel` (Fast/Normal/Deep: prompt clock note, effort, max tokens, timeout)
 - `Sources/ChessCoach/Banter.swift` — `OpponentMood`, `ChatLine`, `BanterContext`, `Banter` (cheeky-opponent prompts for moves and chat replies, `SAY:`/`MOOD:` parser)
 - `Sources/ChessCoach/MoveParser.swift` — finds a legal move in free-text model replies (SAN or UCI)
 - `Tests/ChessCoachTests/LLMClientTests.swift` — stub-transport tests for both wire formats, status mapping, errors
@@ -46,6 +47,7 @@
 - `Tests/ChessEngineTests/AnalysisTests.swift` — Engine.analyse tests (mates both colours, hanging queen, checkmate/stalemate, PV legality, timing, shouldStop, determinism)
 - `Tests/ChessAppTests/CoachModelTests.swift` — coach tests with a counting stub `LLMTransport`, in-memory keys and short analysis limits: reviews and marks, undo, hint, AI states, settings round trip, usable model
 - `Tests/ChessAppTests/ModelOpponentTests.swift` — Versus AI model tests with a queued stub `LLMTransport`: play, retry, engine fallback with notice, 401 and try again, engine move, undo and new game cancel, human as Black
+- `Tests/ChessCoachTests/ThinkingTests.swift` — reasoning effort per provider and level, timeouts
 - `Tests/ChessCoachTests/BanterTests.swift` — banter parser and prompt tests
 - `Tests/ChessAppTests/ChatTests.swift` — chat timeline, mood, replies, chat off, undo and new game
 - `Tests/ChessAppTests/GameModelTests.swift` — GameModel tests: selection, promotion, piece identity, undo, game over, versus-computer flow (`@testable import ChessApp`)

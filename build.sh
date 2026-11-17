@@ -2,7 +2,7 @@
 # Builds dist/Chess.app (ad-hoc signed) and dist/Chess-<version>.dmg. The icon step needs Pillow; without it the app builds with no icon.
 set -e
 cd "$(dirname "$0")"
-VERSION=1.3.0
+VERSION=1.4.0
 APP="dist/Chess.app"
 
 swift build -c release

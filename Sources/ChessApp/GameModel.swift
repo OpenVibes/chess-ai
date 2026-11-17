@@ -405,6 +405,19 @@ final class GameModel {
 
     // MARK: Model opponent
 
+    /// Changes how long the opponent may think. If it is thinking right now, it starts this move again at the new pace.
+    func setOpponentThinking(_ level: ThinkingLevel) {
+        guard coach.settings.opponentThinking != level else { return }
+        coach.settings.opponentThinking = level
+        guard mode == .versusModel else { return }
+        if chatActive { addChat(.note("Thinking set to \(level.displayName).")) }
+        if isThinking, !isGameOver, sideToMove != humanColor, computerEnabled {
+            cancelSearch()
+            opponentMessage = nil
+            startModelTurn()
+        }
+    }
+
     /// "Try again" in the error card: asks the model once more for this turn.
     func retryModelTurn() {
         guard mode == .versusModel, !isGameOver, sideToMove != humanColor, !isThinking else { return }
@@ -430,6 +443,7 @@ final class GameModel {
         let name = modelName
         let minimum = minimumThinkTime
         let banter = chatActive
+        let thinking = coach.settings.opponentThinking
         searchTask = Task { @MainActor [weak self] in
             let started = ContinuousClock.now
             guard let self else { return }
@@ -443,7 +457,7 @@ final class GameModel {
                 context = self.banterContext()
             }
             let snapshot = self.game
-            let outcome = await Self.askModel(client, game: snapshot, banter: context)
+            let outcome = await Self.askModel(client, game: snapshot, banter: context, thinking: thinking)
             guard generation == self.searchGeneration, !flag.isCancelled else { return }
             switch outcome {
             case .failed(let message):
@@ -481,14 +495,17 @@ final class GameModel {
     }
 
     /// One request plus at most two retries. Never judges the move: `MoveParser` and `Position` decide legality.
-    private nonisolated static func askModel(_ client: LLMClient, game: Game, banter: BanterContext?) async -> ModelTurnOutcome {
-        let system = banter.map { Banter.opponentSystem(name: $0.name) } ?? CoachPrompts.opponentSystem
+    private nonisolated static func askModel(_ client: LLMClient, game: Game, banter: BanterContext?,
+                                             thinking: ThinkingLevel) async -> ModelTurnOutcome {
+        let system = (banter.map { Banter.opponentSystem(name: $0.name) } ?? CoachPrompts.opponentSystem)
+            + "\n" + thinking.promptNote
         let first = banter.map { Banter.opponentTurn(game: game, context: $0) } ?? CoachPrompts.opponentTurn(game: game)
         var messages = [ChatMessage(role: .user, content: first)]
         let legalSAN = game.position.legalMoves().map { game.position.san(for: $0) }
         for attempt in 0..<3 {
             do {
-                let reply = try await client.complete(system: system, messages: messages, maxTokens: 4000)
+                let reply = try await client.complete(system: system, messages: messages,
+                                                      maxTokens: thinking.maxTokens, thinking: thinking)
                 if let move = MoveParser.parse(reply, in: game.position) { return .move(move, reply: reply) }
                 if attempt < 2 {
                     messages.append(ChatMessage(role: .assistant, content: reply))
@@ -575,7 +592,8 @@ final class GameModel {
             do {
                 result = .success(try await client.complete(system: system,
                                                             messages: [ChatMessage(role: .user, content: prompt)],
-                                                            maxTokens: 2000))
+                                                            maxTokens: ThinkingLevel.fast.maxTokens,
+                                                            thinking: .fast))
             } catch {
                 result = .failure(error)
             }

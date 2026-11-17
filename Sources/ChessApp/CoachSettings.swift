@@ -97,6 +97,8 @@ final class CoachSettings {
     var aiExplanations: Bool { didSet { changed() } }
     /// Versus AI model: the opponent chats and teases with each move.
     var chatEnabled: Bool { didSet { changed() } }
+    /// Versus AI model: how long the opponent may think. Can change mid-game.
+    var opponentThinking: ThinkingLevel { didSet { changed() } }
     var modelConfig: ModelConfig { didSet { changed() } }
     var selectedPresetID: String { didSet { changed() } }
     /// Bumped whenever a key is saved so views re-evaluate `isModelUsable`.
@@ -114,6 +116,7 @@ final class CoachSettings {
         static let hints = "hintsEnabled"
         static let ai = "aiExplanations"
         static let chat = "chatEnabled"
+        static let thinking = "opponentThinking"
         static let config = "modelConfig"
         static let preset = "selectedPresetID"
     }
@@ -129,6 +132,7 @@ final class CoachSettings {
         hintsEnabled = bool(Key.hints, true)
         aiExplanations = bool(Key.ai, false)
         chatEnabled = bool(Key.chat, true)
+        opponentThinking = defaults.string(forKey: Key.thinking).flatMap(ThinkingLevel.init(rawValue:)) ?? .normal
         if let data = defaults.data(forKey: Key.config),
            let config = try? JSONDecoder().decode(ModelConfig.self, from: data) {
             modelConfig = config
@@ -159,6 +163,7 @@ final class CoachSettings {
         defaults.set(hintsEnabled, forKey: Key.hints)
         defaults.set(aiExplanations, forKey: Key.ai)
         defaults.set(chatEnabled, forKey: Key.chat)
+        defaults.set(opponentThinking.rawValue, forKey: Key.thinking)
         if let data = try? JSONEncoder().encode(modelConfig) { defaults.set(data, forKey: Key.config) }
         defaults.set(selectedPresetID, forKey: Key.preset)
         onChange?(oldCoach != nil && oldCoach != coachEnabled)

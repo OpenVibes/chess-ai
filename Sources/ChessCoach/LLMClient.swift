@@ -84,7 +84,9 @@ public struct LLMClient: Sendable {
 
     static let fallbackModels: Set<String> = ["claude-fable-5-2", "claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"]
 
-    public func complete(system: String, messages: [ChatMessage], maxTokens: Int = 4000) async throws -> String {
+    /// `thinking` sets the provider's reasoning effort and the timeout; nil keeps the defaults (low effort, 60 s).
+    public func complete(system: String, messages: [ChatMessage], maxTokens: Int = 4000,
+                         thinking: ThinkingLevel? = nil) async throws -> String {
         let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasKey = !(key ?? "").isEmpty
         if config.requiresKey && !hasKey { throw LLMError.missingKey }
@@ -99,7 +101,7 @@ public struct LLMClient: Sendable {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60
+        request.timeoutInterval = thinking?.timeout ?? 60
         request.setValue("application/json", forHTTPHeaderField: "content-type")
 
         var body: [String: Any] = ["model": config.model, "max_tokens": maxTokens]
@@ -111,7 +113,7 @@ public struct LLMClient: Sendable {
             while msgs.last?.role == .assistant { msgs.removeLast() }   // no prefill
             body["system"] = system
             body["messages"] = msgs.map { ["role": $0.role.rawValue, "content": $0.content] }
-            body["output_config"] = ["effort": "low"]
+            body["output_config"] = ["effort": thinking?.effort ?? "low"]
             if host.lowercased() == "api.anthropic.com" && Self.fallbackModels.contains(config.model) {
                 request.setValue("server-side-fallback-2026-07-01", forHTTPHeaderField: "anthropic-beta")
                 body["fallbacks"] = "default"
@@ -126,6 +128,7 @@ public struct LLMClient: Sendable {
                 body["max_tokens"] = nil
                 body["max_completion_tokens"] = maxTokens
             }
+            if let thinking { Self.addReasoning(thinking, host: host.lowercased(), port: url.port, to: &body) }
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
 
@@ -219,6 +222,19 @@ public struct LLMClient: Sendable {
             id.hasPrefix("models/") ? String(id.dropFirst("models/".count)) : id
         }
         return Array(Set(ids)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// Reasoning effort only where the server is known to accept it. Ollama gives a 400 for any effort on models
+    /// that cannot think, but accepts "none" everywhere (it switches thinking off), so only Fast sends it there.
+    static func addReasoning(_ level: ThinkingLevel, host: String, port: Int?, to body: inout [String: Any]) {
+        switch host {
+        case "api.openai.com", "generativelanguage.googleapis.com":
+            body["reasoning_effort"] = level.effort
+        case "openrouter.ai":
+            body["reasoning"] = ["effort": level.effort]
+        default:
+            if port == 11434, level == .fast { body["reasoning_effort"] = "none" }
+        }
     }
 
     private func redact(_ text: String, _ key: String?) -> String {

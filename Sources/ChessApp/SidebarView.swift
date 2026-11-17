@@ -16,6 +16,7 @@ struct SidebarView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .minimumScaleFactor(0.8)
+            if model.mode == .versusModel { ThinkingPicker(model: model) }
             if model.chatActive {
                 MoveList(model: model)
                     .frame(height: 96)
@@ -55,6 +56,26 @@ struct SidebarView: View {
         .background(Color(nsColor: .controlBackgroundColor))
         // A hint is shown in the coach panel, so switch to it.
         .onChange(of: model.coach.hint != nil) { _, shown in if shown { panel = .coach } }
+    }
+}
+
+/// Fast / Normal / Deep for the AI model. Works mid-game: a move being thought about starts again at the new pace.
+private struct ThinkingPicker: View {
+    let model: GameModel
+
+    var body: some View {
+        let level = model.coach.settings.opponentThinking
+        HStack(spacing: 8) {
+            Image(systemName: level == .fast ? "hare" : (level == .deep ? "brain" : "gauge.with.dots.needle.50percent"))
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            Picker("Thinking", selection: Binding(get: { level }, set: { model.setOpponentThinking($0) })) {
+                ForEach(ThinkingLevel.allCases, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+        .help("How long \(model.modelName) may think. \(level.summary) You can change it at any time.")
     }
 }
 
